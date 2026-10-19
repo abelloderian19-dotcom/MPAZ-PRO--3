@@ -18,13 +18,13 @@ class MpazProViewModelTest {
     }
 
     @Test
-    fun estudianteSoloVeContenidoAsignadoYConDesafios() {
+    fun estudianteVeTodasLasAsignaturasYDesafiosDeC2() {
         val viewModel = MpazProViewModel()
         viewModel.entrarModoDesarrollo(Perfil.ESTUDIANTE)
         val contenidos = viewModel.contenidosDelEstudiante(viewModel.usuarioActivo.value)
 
-        assertEquals(listOf("C2"), contenidos.map { it.id })
-        assertEquals(listOf("A1", "A2", "A3"), viewModel.desafiosDe(contenidos.single().id).map { it.id })
+        assertEquals(listOf("C1", "C2", "C3", "C4"), contenidos.map { it.id })
+        assertEquals(listOf("A1", "A2", "A3"), viewModel.desafiosDe("C2").map { it.id })
     }
 
     @Test

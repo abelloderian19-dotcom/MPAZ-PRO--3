@@ -40,8 +40,13 @@ fun DesafiosScreen(navController: NavHostController, viewModel: MpazProViewModel
     val desafios = remember(contenidoId) { viewModel.desafiosDe(contenidoId) }
 
     var indice by remember { mutableIntStateOf(0) }
-    var resultado by remember { mutableStateOf<Boolean?>(null) }
-    var respondido by remember { mutableStateOf(false) }
+    var desafiosRespondidos by remember(contenidoId, usuario?.id) {
+        mutableStateOf(
+            viewModel.respuestasDe(usuario?.id.orEmpty(), contenidoId.orEmpty())
+                .map { it.actividadId }
+                .toSet()
+        )
+    }
 
     Scaffold(topBar = { BarraSuperior("Desafíos", navController) }) { padding ->
         Column(
@@ -67,20 +72,12 @@ fun DesafiosScreen(navController: NavHostController, viewModel: MpazProViewModel
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(56.dp),
+                    enabled = actual.id !in desafiosRespondidos,
                     onClick = {
-                        resultado = viewModel.responderDesafio(usuario?.id.orEmpty(), actual, posicion)
-                        respondido = true
+                        viewModel.responderDesafio(usuario?.id.orEmpty(), actual, posicion)
+                        desafiosRespondidos = desafiosRespondidos + actual.id
                     }
                 ) { Text(alternativa.texto, style = MaterialTheme.typography.titleMedium) }
-            }
-
-            if (respondido) {
-                val texto = when (resultado) {
-                    true -> "¡Correcto!"
-                    false -> "Inténtalo de nuevo."
-                    null -> "No se pudo registrar la respuesta."
-                }
-                Text(texto, style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.secondary)
             }
 
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
@@ -89,8 +86,6 @@ fun DesafiosScreen(navController: NavHostController, viewModel: MpazProViewModel
                     enabled = indice > 0,
                     onClick = {
                         indice--
-                        respondido = false
-                        resultado = null
                     }
                 ) { Text("Anterior") }
                 Button(
@@ -98,8 +93,6 @@ fun DesafiosScreen(navController: NavHostController, viewModel: MpazProViewModel
                     enabled = indice < desafios.lastIndex,
                     onClick = {
                         indice++
-                        respondido = false
-                        resultado = null
                     }
                 ) { Text("Siguiente") }
             }

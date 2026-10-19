@@ -79,6 +79,9 @@ fun EvaluacionFinalScreen(navController: NavHostController, viewModel: MpazProVi
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 RadioButton(
                                     selected = respuestas[pregunta.id] == posicion,
+                                    enabled = intentos != null &&
+                                        intentos > 0 &&
+                                        respuestas[pregunta.id] == null,
                                     onClick = { respuestas = respuestas + (pregunta.id to posicion) }
                                 )
                                 Text(alternativa.texto, style = MaterialTheme.typography.bodyLarge)
