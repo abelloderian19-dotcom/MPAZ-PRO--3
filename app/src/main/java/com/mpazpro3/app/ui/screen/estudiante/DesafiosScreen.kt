@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
@@ -25,6 +26,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
 import com.mpazpro3.app.navigation.Rutas
+import com.mpazpro3.app.model.Actividad
 import com.mpazpro3.app.ui.components.BarraSuperior
 import com.mpazpro3.app.viewmodel.MpazProViewModel
 
@@ -40,6 +42,7 @@ fun DesafiosScreen(navController: NavHostController, viewModel: MpazProViewModel
     val desafios = remember(contenidoId) { viewModel.desafiosDe(contenidoId) }
 
     var indice by remember { mutableIntStateOf(0) }
+    var desafioParaReintentar by remember { mutableStateOf<Actividad?>(null) }
     val respuestasGuardadas = remember(contenidoId, usuario?.id) {
         viewModel.respuestasDe(usuario?.id.orEmpty(), contenidoId.orEmpty())
     }
@@ -121,11 +124,7 @@ fun DesafiosScreen(navController: NavHostController, viewModel: MpazProViewModel
                 )
                 Button(
                     modifier = Modifier.fillMaxWidth(),
-                    onClick = {
-                        desafiosRespondidos = desafiosRespondidos - actual.id
-                        alternativasSeleccionadas = alternativasSeleccionadas - actual.id
-                        resultados = resultados - actual.id
-                    }
+                    onClick = { desafioParaReintentar = actual }
                 ) { Text("Reintentar desafío") }
             }
 
@@ -162,5 +161,24 @@ fun DesafiosScreen(navController: NavHostController, viewModel: MpazProViewModel
                 onClick = { navController.navigate(Rutas.ESTUDIANTE_EVALUACION) }
             ) { Text("Ir a la evaluación final", style = MaterialTheme.typography.titleMedium) }
         }
+    }
+
+    desafioParaReintentar?.let { desafio ->
+        AlertDialog(
+            onDismissRequest = { desafioParaReintentar = null },
+            title = { Text("¿Intentar nuevamente?") },
+            text = { Text("Se guardará un nuevo intento para este desafío. ¿Quieres continuar?") },
+            confirmButton = {
+                Button(onClick = {
+                    desafiosRespondidos = desafiosRespondidos - desafio.id
+                    alternativasSeleccionadas = alternativasSeleccionadas - desafio.id
+                    resultados = resultados - desafio.id
+                    desafioParaReintentar = null
+                }) { Text("Sí, intentar") }
+            },
+            dismissButton = {
+                OutlinedButton(onClick = { desafioParaReintentar = null }) { Text("Cancelar") }
+            }
+        )
     }
 }
