@@ -9,8 +9,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
@@ -25,24 +25,19 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
-import com.mpazpro3.app.navigation.Rutas
 import com.mpazpro3.app.model.Actividad
+import com.mpazpro3.app.navigation.Rutas
 import com.mpazpro3.app.ui.components.BarraSuperior
 import com.mpazpro3.app.viewmodel.MpazProViewModel
 
-/**
- * Desafíos de práctica, uno a la vez, antes de la evaluación final. RF: "desarrollar
- * actividades y desafíos de dificultad progresiva".
- *
- */
 @Composable
 fun DesafiosScreen(navController: NavHostController, viewModel: MpazProViewModel) {
     val contenidoId by viewModel.contenidoSeleccionadoId.collectAsState()
     val usuario by viewModel.usuarioActivo.collectAsState()
     val desafios = remember(contenidoId) { viewModel.desafiosDe(contenidoId) }
+    var indice by remember(contenidoId) { mutableIntStateOf(0) }
+    var confirmarReintentoDesafios by remember { mutableStateOf(false) }
 
-    var indice by remember { mutableIntStateOf(0) }
-    var desafioParaReintentar by remember { mutableStateOf<Actividad?>(null) }
     val respuestasGuardadas = remember(contenidoId, usuario?.id) {
         viewModel.respuestasDe(usuario?.id.orEmpty(), contenidoId.orEmpty())
     }
@@ -56,7 +51,7 @@ fun DesafiosScreen(navController: NavHostController, viewModel: MpazProViewModel
         mutableStateOf(respuestasGuardadas.map { it.actividadId }.toSet())
     }
 
-    fun comprobarDesafio(actividad: com.mpazpro3.app.model.Actividad) {
+    fun comprobarDesafio(actividad: Actividad) {
         val alternativa = alternativasSeleccionadas[actividad.id] ?: return
         if (actividad.id in desafiosRespondidos) return
         val resultado = viewModel.responderDesafio(usuario?.id.orEmpty(), actividad, alternativa)
@@ -68,11 +63,8 @@ fun DesafiosScreen(navController: NavHostController, viewModel: MpazProViewModel
 
     Scaffold(topBar = { BarraSuperior("Desafíos", navController) }) { padding ->
         Column(
-            modifier = Modifier
-                .padding(padding)
-                .fillMaxSize()
-                .verticalScroll(rememberScrollState())
-                .padding(16.dp),
+            modifier = Modifier.padding(padding).fillMaxSize()
+                .verticalScroll(rememberScrollState()).padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             if (desafios.isEmpty()) {
@@ -81,15 +73,12 @@ fun DesafiosScreen(navController: NavHostController, viewModel: MpazProViewModel
             }
 
             val actual = desafios[indice.coerceIn(0, desafios.lastIndex)]
-
             Text("Desafío ${indice + 1} de ${desafios.size} · ${actual.dificultad.etiqueta}", style = MaterialTheme.typography.labelLarge)
             Text(actual.enunciado, style = MaterialTheme.typography.headlineSmall)
 
             actual.alternativas.forEachIndexed { posicion, alternativa ->
                 val seleccionada = alternativasSeleccionadas[actual.id] == posicion
-                val alSeleccionar = {
-                    alternativasSeleccionadas = alternativasSeleccionadas + (actual.id to posicion)
-                }
+                val alSeleccionar = { alternativasSeleccionadas = alternativasSeleccionadas + (actual.id to posicion) }
                 if (seleccionada) {
                     Button(
                         modifier = Modifier.fillMaxWidth().height(56.dp),
@@ -111,9 +100,7 @@ fun DesafiosScreen(navController: NavHostController, viewModel: MpazProViewModel
                     enabled = alternativasSeleccionadas.containsKey(actual.id),
                     onClick = { comprobarDesafio(actual) }
                 ) { Text("Comprobar respuesta") }
-            }
-
-            if (actual.id in desafiosRespondidos) {
+            } else {
                 Text(
                     when (resultados[actual.id]) {
                         true -> "¡Correcto!"
@@ -122,19 +109,13 @@ fun DesafiosScreen(navController: NavHostController, viewModel: MpazProViewModel
                     },
                     style = MaterialTheme.typography.titleMedium
                 )
-                Button(
-                    modifier = Modifier.fillMaxWidth(),
-                    onClick = { desafioParaReintentar = actual }
-                ) { Text("Reintentar desafío") }
             }
 
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
                 OutlinedButton(
                     modifier = Modifier.weight(1f),
                     enabled = indice > 0,
-                    onClick = {
-                        indice--
-                    }
+                    onClick = { indice-- }
                 ) { Text("Anterior") }
                 Button(
                     modifier = Modifier.weight(1f),
@@ -148,36 +129,36 @@ fun DesafiosScreen(navController: NavHostController, viewModel: MpazProViewModel
 
             if (desafios.all { it.id in desafiosRespondidos }) {
                 val correctos = desafios.count { resultados[it.id] == true }
-                Text(
-                    "Resultados de práctica: $correctos de ${desafios.size} correctos.",
-                    style = MaterialTheme.typography.titleMedium
-                )
+                Text("Resultados de práctica: $correctos de ${desafios.size} correctos.", style = MaterialTheme.typography.titleMedium)
+                Button(
+                    modifier = Modifier.fillMaxWidth(),
+                    onClick = { confirmarReintentoDesafios = true }
+                ) { Text("Reintentar todos los desafíos") }
             }
 
             Button(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(56.dp),
+                modifier = Modifier.fillMaxWidth().height(56.dp),
                 onClick = { navController.navigate(Rutas.ESTUDIANTE_EVALUACION) }
             ) { Text("Ir a la evaluación final", style = MaterialTheme.typography.titleMedium) }
         }
     }
 
-    desafioParaReintentar?.let { desafio ->
+    if (confirmarReintentoDesafios) {
         AlertDialog(
-            onDismissRequest = { desafioParaReintentar = null },
-            title = { Text("¿Intentar nuevamente?") },
-            text = { Text("Se guardará un nuevo intento para este desafío. ¿Quieres continuar?") },
+            onDismissRequest = { confirmarReintentoDesafios = false },
+            title = { Text("¿Reintentar todos los desafíos?") },
+            text = { Text("Se reiniciarán todas las preguntas para comenzar un nuevo intento del desafío.") },
             confirmButton = {
                 Button(onClick = {
-                    desafiosRespondidos = desafiosRespondidos - desafio.id
-                    alternativasSeleccionadas = alternativasSeleccionadas - desafio.id
-                    resultados = resultados - desafio.id
-                    desafioParaReintentar = null
-                }) { Text("Sí, intentar") }
+                    desafiosRespondidos = emptySet()
+                    alternativasSeleccionadas = emptyMap()
+                    resultados = emptyMap()
+                    indice = 0
+                    confirmarReintentoDesafios = false
+                }) { Text("Sí, reintentar") }
             },
             dismissButton = {
-                OutlinedButton(onClick = { desafioParaReintentar = null }) { Text("Cancelar") }
+                OutlinedButton(onClick = { confirmarReintentoDesafios = false }) { Text("Cancelar") }
             }
         )
     }
