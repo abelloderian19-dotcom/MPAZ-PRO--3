@@ -7,6 +7,7 @@ import com.mpazpro3.app.model.Asignacion
 import com.mpazpro3.app.model.Asignatura
 import com.mpazpro3.app.model.Contenido
 import com.mpazpro3.app.model.EstadoAprobacion
+import com.mpazpro3.app.model.EstadoAvance
 import com.mpazpro3.app.model.Estudiante
 import com.mpazpro3.app.model.InformeDocente
 import com.mpazpro3.app.model.Perfil
@@ -226,23 +227,68 @@ class MpazProViewModel : ViewModel() {
      */
     fun responderDesafio(estudianteId: String, actividad: Actividad, alternativa: Int): Boolean? = null
 
-    /** TODO(equipo): devolver solo las preguntas de la evaluación final del contenido. Hoy devuelve todas. */
+    /** Devuelve las preguntas de evaluación final del contenido en el orden definido. */
     fun evaluacionFinalDe(contenidoId: String?): List<Actividad> = _actividades.value
+        .filter { it.contenidoId == contenidoId && it.esEvaluacionFinal }
+        .sortedBy { it.orden }
 
     /**
      * TODO(equipo): intentos que le quedan al estudiante en la evaluación final (máximo definido
      * por el docente menos los usados). Regla de negocio: el máximo debe respetarse
      * estrictamente. Hoy devuelve null (sin calcular).
      */
-    fun intentosRestantes(estudianteId: String, contenidoId: String): Int? = null
+    fun intentosRestantes(estudianteId: String, contenidoId: String): Int? {
+        val estudiante = _estudiantes.value.find { it.id == estudianteId } ?: return null
+        val maxIntentos = _asignaciones.value
+            .filter { it.curso == estudiante.curso && it.contenidoId == contenidoId }
+            .maxOfOrNull { it.maxIntentosEvaluacion } ?: return null
+        val usados = _seguimientos.value
+            .find { it.estudianteId == estudianteId && it.contenidoId == contenidoId }
+            ?.intentosEvaluacionUsados ?: 0
+        return (maxIntentos - usados).coerceAtLeast(0)
+    }
 
     /**
      * TODO(equipo): registrar las respuestas de la evaluación final como un nuevo intento
      * (solo si quedan intentos) y actualizar el seguimiento. Hoy no hace nada.
      * @param respuestas mapa idActividad -> índice de la alternativa elegida.
      */
-    fun enviarEvaluacion(estudianteId: String, contenidoId: String, respuestas: Map<String, Int>) {
-        // Sin implementar todavía.
+    fun enviarEvaluacion(estudianteId: String, contenidoId: String, respuestas: Map<String, Int>): Boolean {
+        if (intentosRestantes(estudianteId, contenidoId)?.let { it > 0 } != true) return false
+
+        val preguntas = evaluacionFinalDe(contenidoId)
+        if (preguntas.isEmpty() || respuestas.keys != preguntas.map { it.id }.toSet()) return false
+        if (preguntas.any { pregunta ->
+                respuestas[pregunta.id]?.let { it in pregunta.alternativas.indices } != true
+            }) return false
+
+        val existentes = _seguimientos.value
+        val indice = existentes.indexOfFirst {
+            it.estudianteId == estudianteId && it.contenidoId == contenidoId
+        }
+        val seguimiento = existentes.getOrNull(indice)
+            ?: SeguimientoAvance(estudianteId = estudianteId, contenidoId = contenidoId)
+        val numeroIntento = seguimiento.intentosEvaluacionUsados + 1
+        val nuevasRespuestas = preguntas.map { pregunta ->
+            val elegida = respuestas.getValue(pregunta.id)
+            RespuestaEstudiante(
+                actividadId = pregunta.id,
+                alternativaElegida = elegida,
+                esCorrecta = pregunta.alternativas[elegida].esCorrecta,
+                numeroIntento = numeroIntento
+            )
+        }
+        val actualizado = seguimiento.copy(
+            respuestas = seguimiento.respuestas + nuevasRespuestas,
+            intentosEvaluacionUsados = numeroIntento,
+            estado = EstadoAvance.FINALIZADO
+        )
+        _seguimientos.value = if (indice >= 0) {
+            existentes.toMutableList().also { it[indice] = actualizado }
+        } else {
+            existentes + actualizado
+        }
+        return true
     }
 
     /**
@@ -250,5 +296,8 @@ class MpazProViewModel : ViewModel() {
      * cuáles fueron correctas e incorrectas. RF: "revisar cuáles de sus respuestas fueron
      * correctas o incorrectas". Hoy devuelve una lista vacía.
      */
-    fun respuestasDe(estudianteId: String, contenidoId: String): List<RespuestaEstudiante> = emptyList()
+    fun respuestasDe(estudianteId: String, contenidoId: String): List<RespuestaEstudiante> =
+        _seguimientos.value
+            .find { it.estudianteId == estudianteId && it.contenidoId == contenidoId }
+            ?.respuestas.orEmpty()
 }
