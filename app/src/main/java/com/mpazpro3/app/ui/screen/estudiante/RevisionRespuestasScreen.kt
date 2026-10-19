@@ -44,6 +44,10 @@ fun RevisionRespuestasScreen(navController: NavHostController, viewModel: MpazPr
         viewModel.actividadPorId(it.actividadId)?.esEvaluacionFinal == true
     }.groupBy { respuesta -> "Intento ${respuesta.numeroIntento}" }
         .toList().sortedBy { (_, grupo) -> grupo.minOf { it.fechaHora } }
+    val cantidadIntentosDesafios = respuestas.count {
+        viewModel.actividadPorId(it.actividadId)?.esEvaluacionFinal != true
+    }
+    val cantidadIntentosEvaluacion = intentosEvaluacion.size
     var desafiosAbiertos by remember(contenidoId, usuario?.id) { mutableStateOf(true) }
     var evaluacionAbierta by remember(contenidoId, usuario?.id) { mutableStateOf(true) }
 
@@ -64,7 +68,7 @@ fun RevisionRespuestasScreen(navController: NavHostController, viewModel: MpazPr
                     OutlinedButton(
                         modifier = Modifier.fillMaxWidth(),
                         onClick = { desafiosAbiertos = !desafiosAbiertos }
-                    ) { Text("Desafíos (${intentosDesafios.size}) ${if (desafiosAbiertos) "▲" else "▼"}") }
+                    ) { Text("Desafíos · Intentos realizados: $cantidadIntentosDesafios ${if (desafiosAbiertos) "▲" else "▼"}") }
                 }
                 if (desafiosAbiertos) {
                     items(intentosDesafios) { (titulo, grupo) ->
@@ -75,7 +79,7 @@ fun RevisionRespuestasScreen(navController: NavHostController, viewModel: MpazPr
                     OutlinedButton(
                         modifier = Modifier.fillMaxWidth(),
                         onClick = { evaluacionAbierta = !evaluacionAbierta }
-                    ) { Text("Evaluación final (${intentosEvaluacion.size}) ${if (evaluacionAbierta) "▲" else "▼"}") }
+                    ) { Text("Evaluación final · Intentos realizados: $cantidadIntentosEvaluacion ${if (evaluacionAbierta) "▲" else "▼"}") }
                 }
                 if (evaluacionAbierta) {
                     items(intentosEvaluacion) { (titulo, grupo) ->
