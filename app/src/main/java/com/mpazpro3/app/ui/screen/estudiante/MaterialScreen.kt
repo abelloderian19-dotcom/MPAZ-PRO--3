@@ -1,15 +1,14 @@
 package com.mpazpro3.app.ui.screen.estudiante
 
-import androidx.compose.foundation.background
+import android.speech.tts.TextToSpeech
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -18,15 +17,24 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.ui.Alignment
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
+import com.mpazpro3.app.R
 import com.mpazpro3.app.navigation.Rutas
 import com.mpazpro3.app.ui.components.BarraSuperior
 import com.mpazpro3.app.viewmodel.MpazProViewModel
+import java.util.Locale
 
 /**
  * Material de estudio del contenido elegido: explicación, imagen, audio de apoyo, ejemplo e
@@ -40,6 +48,37 @@ import com.mpazpro3.app.viewmodel.MpazProViewModel
  */
 @Composable
 fun MaterialScreen(navController: NavHostController, viewModel: MpazProViewModel) {
+    val context = LocalContext.current
+    var tts by remember(context) { mutableStateOf<TextToSpeech?>(null) }
+    var ttsInicializado by remember(context) { mutableStateOf(false) }
+    var audioListo by remember(context) { mutableStateOf(false) }
+    var audioError by remember(context) { mutableStateOf(false) }
+    DisposableEffect(context) {
+        val motor = TextToSpeech(context) { estado ->
+            ttsInicializado = estado == TextToSpeech.SUCCESS
+        }
+        tts = motor
+        onDispose {
+            motor.stop()
+            motor.shutdown()
+            tts = null
+            ttsInicializado = false
+            audioListo = false
+        }
+    }
+    LaunchedEffect(ttsInicializado) {
+        if (ttsInicializado) {
+            val motor = tts
+            val chile = motor?.setLanguage(Locale("es", "CL"))
+                ?: TextToSpeech.LANG_NOT_SUPPORTED
+            val estadoIdioma = if (chile < TextToSpeech.LANG_AVAILABLE) {
+                motor?.setLanguage(Locale("es", "ES")) ?: TextToSpeech.LANG_NOT_SUPPORTED
+            } else chile
+            audioListo = estadoIdioma >= TextToSpeech.LANG_AVAILABLE
+            audioError = !audioListo
+        }
+    }
+
     val contenidoId by viewModel.contenidoSeleccionadoId.collectAsState()
     val usuario by viewModel.usuarioActivo.collectAsState()
     val contenido = viewModel.contenidoPorId(contenidoId)
@@ -64,23 +103,44 @@ fun MaterialScreen(navController: NavHostController, viewModel: MpazProViewModel
                         Text(recurso.titulo, style = MaterialTheme.typography.headlineSmall)
                         Text(recurso.explicacion, style = MaterialTheme.typography.bodyLarge)
 
-                        if (recurso.descripcionImagen != null) {
-                            Box(
+                        if (recurso.descripcionImagen != null && recurso.contenidoId == "C2") {
+                            Image(
+                                painter = painterResource(R.drawable.bloques_base_diez),
+                                contentDescription = "Cuatro centenas, cinco decenas y dos unidades representadas con bloques base diez",
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .height(140.dp)
-                                    .background(MaterialTheme.colorScheme.secondaryContainer, RoundedCornerShape(12.dp)),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text(recurso.descripcionImagen, style = MaterialTheme.typography.bodyMedium)
-                            }
+                                    .height(190.dp),
+                                contentScale = ContentScale.Fit
+                            )
+                            Text(
+                                "4 centenas + 5 decenas + 2 unidades = 452",
+                                style = MaterialTheme.typography.titleMedium
+                            )
                         }
 
                         if (recurso.audioDisponible) {
                             OutlinedButton(
                                 modifier = Modifier.fillMaxWidth(),
-                                onClick = { /* TODO(equipo): reproducir el audio de apoyo */ }
-                            ) { Text("Escuchar audio de apoyo") }
+                                enabled = audioListo,
+                                onClick = {
+                                    val texto = "${recurso.titulo}. ${recurso.explicacion}. Ejemplo: ${recurso.ejemplo}. Instrucciones: ${recurso.instrucciones}"
+                                    val estado = tts?.speak(
+                                        texto,
+                                        TextToSpeech.QUEUE_FLUSH,
+                                        null,
+                                        recurso.id
+                                    )
+                                    if (estado == TextToSpeech.ERROR) audioError = true
+                                }
+                            ) {
+                                Text(if (audioListo) "Escuchar audio de apoyo" else "Preparando audio...")
+                            }
+                            if (audioError) {
+                                Text(
+                                    "No hay una voz en español disponible en este dispositivo.",
+                                    color = MaterialTheme.colorScheme.error
+                                )
+                            }
                         }
 
                         Text("Ejemplo", style = MaterialTheme.typography.titleMedium)
