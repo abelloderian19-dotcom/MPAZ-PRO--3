@@ -282,9 +282,10 @@ class MpazProViewModel : ViewModel() {
         val indice = existentes.indexOfFirst { it.estudianteId == estudianteId && it.contenidoId == contenidoId }
         val seguimiento = existentes.getOrNull(indice) ?: SeguimientoAvance(estudianteId, contenidoId)
         val intento = seguimiento.intentosEvaluacionUsados + 1
+        val fechaHoraEnvio = System.currentTimeMillis()
         val nuevasRespuestas = preguntas.map { p ->
             val elegida = respuestas.getValue(p.id)
-            RespuestaEstudiante(p.id, elegida, p.alternativas[elegida].esCorrecta, intento)
+            RespuestaEstudiante(p.id, elegida, p.alternativas[elegida].esCorrecta, intento, fechaHoraEnvio)
         }
         val actualizado = seguimiento.copy(
             respuestas = seguimiento.respuestas + nuevasRespuestas,

@@ -22,62 +22,67 @@ import androidx.navigation.NavHostController
 import com.mpazpro3.app.navigation.Rutas
 import com.mpazpro3.app.ui.components.BarraSuperior
 import com.mpazpro3.app.viewmodel.MpazProViewModel
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
-/**
- * Revisión de respuestas: el estudiante ve cuáles de sus respuestas fueron correctas o
- * incorrectas. RF: "revisar cuáles de sus respuestas fueron correctas o incorrectas".
- *
- * Importante: esta pantalla muestra SUS respuestas, no el informe pedagógico (al que el
- * estudiante no tiene acceso).
- *
- * TODO(equipo): respuestasDe() hoy devuelve una lista vacía.
- */
 @Composable
 fun RevisionRespuestasScreen(navController: NavHostController, viewModel: MpazProViewModel) {
     val contenidoId by viewModel.contenidoSeleccionadoId.collectAsState()
     val usuario by viewModel.usuarioActivo.collectAsState()
     val respuestas = viewModel.respuestasDe(usuario?.id.orEmpty(), contenidoId.orEmpty())
+    val intentosAgrupados = respuestas.groupBy { respuesta ->
+        val actividad = viewModel.actividadPorId(respuesta.actividadId)
+        if (actividad?.esEvaluacionFinal == true) {
+            "Evaluación final · intento ${respuesta.numeroIntento}"
+        } else {
+            "Desafío ${actividad?.id ?: respuesta.actividadId} · intento ${respuesta.numeroIntento}"
+        }
+    }.toList().sortedBy { (_, grupo) -> grupo.minOf { it.fechaHora } }
 
     Scaffold(topBar = { BarraSuperior("Mis respuestas", navController) }) { padding ->
         Column(
-            modifier = Modifier
-                .padding(padding)
-                .fillMaxSize()
-                .padding(16.dp),
+            modifier = Modifier.padding(padding).fillMaxSize().padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             if (respuestas.isEmpty()) {
-                Text(
-                    "Todavía no hay respuestas para revisar (respuestasDe() está pendiente de implementar).",
-                    style = MaterialTheme.typography.bodyLarge
-                )
+                Text("Todavía no hay respuestas para revisar.", style = MaterialTheme.typography.bodyLarge)
             }
 
             LazyColumn(
                 modifier = Modifier.weight(1f),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                items(respuestas) { respuesta ->
-                    val actividad = viewModel.actividadPorId(respuesta.actividadId)
-                    val elegida = actividad?.alternativas?.getOrNull(respuesta.alternativaElegida)?.texto.orEmpty()
+                items(intentosAgrupados) { (tituloIntento, respuestasIntento) ->
+                    val fecha = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault())
+                        .format(Date(respuestasIntento.minOf { it.fechaHora }))
                     Card(modifier = Modifier.fillMaxWidth()) {
-                        Column(modifier = Modifier.padding(16.dp)) {
-                            Text(actividad?.enunciado.orEmpty(), style = MaterialTheme.typography.titleMedium)
-                            Text("Tu respuesta: $elegida", style = MaterialTheme.typography.bodyLarge)
-                            Text(
-                                if (respuesta.esCorrecta) "✔ Correcta" else "✘ Incorrecta",
-                                style = MaterialTheme.typography.titleMedium,
-                                color = if (respuesta.esCorrecta) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.error
-                            )
+                        Column(
+                            modifier = Modifier.padding(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            Text(tituloIntento, style = MaterialTheme.typography.titleMedium)
+                            Text("Fecha y hora: $fecha", style = MaterialTheme.typography.bodyMedium)
+                            respuestasIntento.forEach { respuesta ->
+                                val actividad = viewModel.actividadPorId(respuesta.actividadId)
+                                val elegida = actividad?.alternativas
+                                    ?.getOrNull(respuesta.alternativaElegida)?.texto.orEmpty()
+                                Text(actividad?.enunciado.orEmpty(), style = MaterialTheme.typography.titleSmall)
+                                Text("Tu respuesta: $elegida", style = MaterialTheme.typography.bodyLarge)
+                                Text(
+                                    if (respuesta.esCorrecta) "Correcta" else "Incorrecta",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    color = if (respuesta.esCorrecta) MaterialTheme.colorScheme.secondary
+                                    else MaterialTheme.colorScheme.error
+                                )
+                            }
                         }
                     }
                 }
             }
 
             Button(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(56.dp),
+                modifier = Modifier.fillMaxWidth().height(56.dp),
                 onClick = {
                     navController.navigate(Rutas.ESTUDIANTE_INICIO) {
                         popUpTo(Rutas.ESTUDIANTE_INICIO) { inclusive = true }

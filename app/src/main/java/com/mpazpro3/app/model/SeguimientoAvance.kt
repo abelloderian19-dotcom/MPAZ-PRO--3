@@ -4,7 +4,8 @@ data class RespuestaEstudiante(
     val actividadId: String,
     val alternativaElegida: Int,
     val esCorrecta: Boolean,
-    val numeroIntento: Int
+    val numeroIntento: Int,
+    val fechaHora: Long = System.currentTimeMillis()
 )
 
 enum class EstadoAvance(val etiqueta: String) {
