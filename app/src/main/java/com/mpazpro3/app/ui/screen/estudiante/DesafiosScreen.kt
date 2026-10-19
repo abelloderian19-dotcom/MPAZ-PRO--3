@@ -40,12 +40,17 @@ fun DesafiosScreen(navController: NavHostController, viewModel: MpazProViewModel
     val desafios = remember(contenidoId) { viewModel.desafiosDe(contenidoId) }
 
     var indice by remember { mutableIntStateOf(0) }
+    val respuestasGuardadas = remember(contenidoId, usuario?.id) {
+        viewModel.respuestasDe(usuario?.id.orEmpty(), contenidoId.orEmpty())
+    }
+    var alternativasSeleccionadas by remember(contenidoId, usuario?.id) {
+        mutableStateOf(respuestasGuardadas.associate { it.actividadId to it.alternativaElegida })
+    }
+    var resultados by remember(contenidoId, usuario?.id) {
+        mutableStateOf(respuestasGuardadas.associate { it.actividadId to it.esCorrecta })
+    }
     var desafiosRespondidos by remember(contenidoId, usuario?.id) {
-        mutableStateOf(
-            viewModel.respuestasDe(usuario?.id.orEmpty(), contenidoId.orEmpty())
-                .map { it.actividadId }
-                .toSet()
-        )
+        mutableStateOf(respuestasGuardadas.map { it.actividadId }.toSet())
     }
 
     Scaffold(topBar = { BarraSuperior("Desafíos", navController) }) { padding ->
@@ -68,16 +73,49 @@ fun DesafiosScreen(navController: NavHostController, viewModel: MpazProViewModel
             Text(actual.enunciado, style = MaterialTheme.typography.headlineSmall)
 
             actual.alternativas.forEachIndexed { posicion, alternativa ->
-                OutlinedButton(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(56.dp),
-                    enabled = actual.id !in desafiosRespondidos,
+                val seleccionada = alternativasSeleccionadas[actual.id] == posicion
+                val alSeleccionar = {
+                    alternativasSeleccionadas = alternativasSeleccionadas + (actual.id to posicion)
+                }
+                if (seleccionada) {
+                    Button(
+                        modifier = Modifier.fillMaxWidth().height(56.dp),
+                        enabled = actual.id !in desafiosRespondidos,
+                        onClick = alSeleccionar
+                    ) { Text(alternativa.texto, style = MaterialTheme.typography.titleMedium) }
+                } else {
+                    OutlinedButton(
+                        modifier = Modifier.fillMaxWidth().height(56.dp),
+                        enabled = actual.id !in desafiosRespondidos,
+                        onClick = alSeleccionar
+                    ) { Text(alternativa.texto, style = MaterialTheme.typography.titleMedium) }
+                }
+            }
+
+            if (actual.id !in desafiosRespondidos) {
+                Button(
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = alternativasSeleccionadas.containsKey(actual.id),
                     onClick = {
-                        viewModel.responderDesafio(usuario?.id.orEmpty(), actual, posicion)
-                        desafiosRespondidos = desafiosRespondidos + actual.id
+                        val alternativa = alternativasSeleccionadas[actual.id] ?: return@Button
+                        val resultado = viewModel.responderDesafio(usuario?.id.orEmpty(), actual, alternativa)
+                        if (resultado != null) {
+                            resultados = resultados + (actual.id to resultado)
+                            desafiosRespondidos = desafiosRespondidos + actual.id
+                        }
                     }
-                ) { Text(alternativa.texto, style = MaterialTheme.typography.titleMedium) }
+                ) { Text("Comprobar respuesta") }
+            }
+
+            if (actual.id in desafiosRespondidos) {
+                Text(
+                    when (resultados[actual.id]) {
+                        true -> "¡Correcto!"
+                        false -> "Inténtalo de nuevo."
+                        null -> "No se pudo registrar la respuesta."
+                    },
+                    style = MaterialTheme.typography.titleMedium
+                )
             }
 
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
