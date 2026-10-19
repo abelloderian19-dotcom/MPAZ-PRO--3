@@ -45,13 +45,18 @@ import com.mpazpro3.app.viewmodel.MpazProViewModel
 fun EvaluacionFinalScreen(navController: NavHostController, viewModel: MpazProViewModel) {
     val contenidoId by viewModel.contenidoSeleccionadoId.collectAsState()
     val usuario by viewModel.usuarioActivo.collectAsState()
+    val seguimientos by viewModel.seguimientos.collectAsState()
     val estudianteId = usuario?.id.orEmpty()
     val preguntas = remember(contenidoId) { viewModel.evaluacionFinalDe(contenidoId) }
-    val intentos = viewModel.intentosRestantes(estudianteId, contenidoId.orEmpty())
+    val intentos = remember(seguimientos, estudianteId, contenidoId) {
+        viewModel.intentosRestantes(estudianteId, contenidoId.orEmpty())
+    }
 
     // Respuestas elegidas: id de la pregunta -> posición de la alternativa
-    var respuestas by remember { mutableStateOf(mapOf<String, Int>()) }
-    var mensaje by remember { mutableStateOf<String?>(null) }
+    var respuestas by remember(contenidoId, estudianteId, intentos) {
+        mutableStateOf(mapOf<String, Int>())
+    }
+    var mensaje by remember(contenidoId, estudianteId, intentos) { mutableStateOf<String?>(null) }
 
     Scaffold(topBar = { BarraSuperior("Evaluación final", navController) }) { padding ->
         Column(
@@ -80,8 +85,7 @@ fun EvaluacionFinalScreen(navController: NavHostController, viewModel: MpazProVi
                                 RadioButton(
                                     selected = respuestas[pregunta.id] == posicion,
                                     enabled = intentos != null &&
-                                        intentos > 0 &&
-                                        respuestas[pregunta.id] == null,
+                                        intentos > 0,
                                     onClick = { respuestas = respuestas + (pregunta.id to posicion) }
                                 )
                                 Text(alternativa.texto, style = MaterialTheme.typography.bodyLarge)
