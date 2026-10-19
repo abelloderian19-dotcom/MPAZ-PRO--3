@@ -210,11 +210,15 @@ class MpazProViewModel : ViewModel() {
     // Módulo "Experiencia del estudiante"
     // =====================================================================
 
-    /**
-     * TODO(equipo): devolver solo los contenidos asignados al curso del estudiante. Hoy devuelve
-     * todos. Regla: el estudiante no puede modificar contenidos ni ver el informe pedagógico.
-     */
-    fun contenidosDelEstudiante(usuario: Usuario?): List<Contenido> = _contenidos.value
+    /** Devuelve los contenidos asignados al curso del estudiante. */
+    fun contenidosDelEstudiante(usuario: Usuario?): List<Contenido> {
+        val curso = usuario?.curso?.takeIf { it.isNotBlank() } ?: return emptyList()
+        val idsAsignados = _asignaciones.value
+            .filter { it.curso == curso }
+            .map { it.contenidoId }
+            .toSet()
+        return _contenidos.value.filter { it.id in idsAsignados }
+    }
 
     /** TODO(equipo): avance del estudiante en el contenido (0.0 a 1.0). Hoy devuelve 0. */
     fun progreso(estudianteId: String, contenidoId: String): Float = 0f

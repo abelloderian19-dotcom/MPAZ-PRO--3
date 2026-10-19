@@ -1,6 +1,7 @@
 package com.mpazpro3.app.viewmodel
 
 import com.mpazpro3.app.model.EstadoAvance
+import com.mpazpro3.app.model.Perfil
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -14,6 +15,16 @@ class MpazProViewModelTest {
         val viewModel = MpazProViewModel()
 
         assertEquals(listOf("C2"), viewModel.contenidosDisponiblesParaAsignar().map { it.id })
+    }
+
+    @Test
+    fun estudianteSoloVeContenidoAsignadoYConDesafios() {
+        val viewModel = MpazProViewModel()
+        viewModel.entrarModoDesarrollo(Perfil.ESTUDIANTE)
+        val contenidos = viewModel.contenidosDelEstudiante(viewModel.usuarioActivo.value)
+
+        assertEquals(listOf("C2"), contenidos.map { it.id })
+        assertEquals(listOf("A1", "A2", "A3"), viewModel.desafiosDe(contenidos.single().id).map { it.id })
     }
 
     @Test
