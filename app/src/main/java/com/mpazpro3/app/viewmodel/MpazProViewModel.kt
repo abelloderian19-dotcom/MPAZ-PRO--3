@@ -240,13 +240,59 @@ class MpazProViewModel : ViewModel() {
      * TODO(equipo): devolver los desafíos del contenido (sin la evaluación final), ordenados
      * por dificultad progresiva. Hoy devuelve TODAS las actividades, sin filtrar ni ordenar.
      */
-    fun desafiosDe(contenidoId: String?): List<Actividad> = _actividades.value
+    fun desafiosDe(contenidoId: String?): List<Actividad> {
+        if (contenidoId.isNullOrBlank()) return emptyList()
+        return _actividades.value
+            .filter { it.contenidoId == contenidoId && !it.esEvaluacionFinal }
+            .sortedWith(compareBy<Actividad> { it.dificultad.ordinal }.thenBy { it.orden })
+    }
 
     /**
      * TODO(equipo): registrar la respuesta en el seguimiento del estudiante y devolver si fue
      * correcta (true/false) para mostrar la retroalimentación. Hoy devuelve null.
      */
-    fun responderDesafio(estudianteId: String, actividad: Actividad, alternativa: Int): Boolean? = null
+    fun responderDesafio(estudianteId: String, actividad: Actividad, alternativa: Int): Boolean? {
+        if (estudianteId.isBlank() || actividad.esEvaluacionFinal) return null
+        val actividadRegistrada = _actividades.value.firstOrNull {
+            it.id == actividad.id &&
+                it.contenidoId == actividad.contenidoId &&
+                !it.esEvaluacionFinal
+        } ?: return null
+        if (alternativa !in actividadRegistrada.alternativas.indices) return null
+
+        val esCorrecta = actividadRegistrada.alternativas[alternativa].esCorrecta
+        val existentes = _seguimientos.value
+        val indiceSeguimiento = existentes.indexOfFirst {
+            it.estudianteId == estudianteId && it.contenidoId == actividadRegistrada.contenidoId
+        }
+        val seguimiento = existentes.getOrNull(indiceSeguimiento)
+            ?: SeguimientoAvance(
+                estudianteId = estudianteId,
+                contenidoId = actividadRegistrada.contenidoId
+            )
+        val numeroIntento = seguimiento.respuestas
+            .filter { it.actividadId == actividadRegistrada.id }
+            .maxOfOrNull { it.numeroIntento }
+            ?.plus(1) ?: 1
+        val respuesta = RespuestaEstudiante(
+            actividadId = actividadRegistrada.id,
+            alternativaElegida = alternativa,
+            esCorrecta = esCorrecta,
+            numeroIntento = numeroIntento
+        )
+        val actualizado = seguimiento.copy(
+            respuestas = seguimiento.respuestas + respuesta,
+            estado = EstadoAvance.EN_PROGRESO
+        )
+        if (indiceSeguimiento >= 0) {
+            _seguimientos.value = existentes.toMutableList().also {
+                it[indiceSeguimiento] = actualizado
+            }
+        } else {
+            _seguimientos.value = existentes + actualizado
+        }
+        return esCorrecta
+    }
 
     /** Devuelve las preguntas de evaluación final del contenido en el orden definido. */
     fun evaluacionFinalDe(contenidoId: String?): List<Actividad> = _actividades.value

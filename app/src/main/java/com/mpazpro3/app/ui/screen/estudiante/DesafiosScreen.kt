@@ -32,10 +32,6 @@ import com.mpazpro3.app.viewmodel.MpazProViewModel
  * Desafíos de práctica, uno a la vez, antes de la evaluación final. RF: "desarrollar
  * actividades y desafíos de dificultad progresiva".
  *
- * TODO(equipo):
- *  - desafiosDe() hoy devuelve TODAS las actividades (incluida la evaluación final) sin ordenar.
- *  - responderDesafio() hoy devuelve null: implementar el registro de la respuesta y devolver
- *    true/false para mostrar "¡Correcto!" o "Inténtalo de nuevo".
  */
 @Composable
 fun DesafiosScreen(navController: NavHostController, viewModel: MpazProViewModel) {
@@ -82,7 +78,7 @@ fun DesafiosScreen(navController: NavHostController, viewModel: MpazProViewModel
                 val texto = when (resultado) {
                     true -> "¡Correcto!"
                     false -> "Inténtalo de nuevo."
-                    null -> "(Retroalimentación pendiente: implementar responderDesafio())"
+                    null -> "No se pudo registrar la respuesta."
                 }
                 Text(texto, style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.secondary)
             }
