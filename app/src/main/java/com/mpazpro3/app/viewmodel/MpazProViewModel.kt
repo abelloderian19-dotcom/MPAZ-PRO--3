@@ -149,8 +149,6 @@ class MpazProViewModel : ViewModel() {
      * contenidos y desafíos a su curso", "definir el número máximo de intentos". Validar que
      * todos los contenidos estén aprobados. Hoy no hace nada.
      */
-    fun asignarAlCurso(curso: String, contenidoIds: List<String>, maxIntentos: Int) {
-        // Sin implementar todavía.
     }
 
     /** TODO(equipo): devolver solo las asignaciones del curso indicado. Hoy devuelve todas. */
@@ -218,15 +216,12 @@ class MpazProViewModel : ViewModel() {
      * TODO(equipo): devolver los desafíos del contenido (sin la evaluación final), ordenados
      * por dificultad progresiva. Hoy devuelve TODAS las actividades, sin filtrar ni ordenar.
      */
-    fun desafiosDe(contenidoId: String?): List<Actividad> = _actividades.value
 
     /**
      * TODO(equipo): registrar la respuesta en el seguimiento del estudiante y devolver si fue
      * correcta (true/false) para mostrar la retroalimentación. Hoy devuelve null.
      */
-    fun responderDesafio(estudianteId: String, actividad: Actividad, alternativa: Int): Boolean? = null
 
-    /** TODO(equipo): devolver solo las preguntas de la evaluación final del contenido. Hoy devuelve todas. */
     fun evaluacionFinalDe(contenidoId: String?): List<Actividad> = _actividades.value
 
     /**
@@ -234,15 +229,12 @@ class MpazProViewModel : ViewModel() {
      * por el docente menos los usados). Regla de negocio: el máximo debe respetarse
      * estrictamente. Hoy devuelve null (sin calcular).
      */
-    fun intentosRestantes(estudianteId: String, contenidoId: String): Int? = null
 
     /**
      * TODO(equipo): registrar las respuestas de la evaluación final como un nuevo intento
      * (solo si quedan intentos) y actualizar el seguimiento. Hoy no hace nada.
      * @param respuestas mapa idActividad -> índice de la alternativa elegida.
      */
-    fun enviarEvaluacion(estudianteId: String, contenidoId: String, respuestas: Map<String, Int>) {
-        // Sin implementar todavía.
     }
 
     /**
@@ -250,5 +242,4 @@ class MpazProViewModel : ViewModel() {
      * cuáles fueron correctas e incorrectas. RF: "revisar cuáles de sus respuestas fueron
      * correctas o incorrectas". Hoy devuelve una lista vacía.
      */
-    fun respuestasDe(estudianteId: String, contenidoId: String): List<RespuestaEstudiante> = emptyList()
 }
