@@ -8,6 +8,7 @@ import com.mpazpro3.app.model.Asignatura
 import com.mpazpro3.app.model.Contenido
 import com.mpazpro3.app.model.EstadoAprobacion
 import com.mpazpro3.app.model.Estudiante
+import com.mpazpro3.app.model.EstadoAvance
 import com.mpazpro3.app.model.InformeDocente
 import com.mpazpro3.app.model.Perfil
 import com.mpazpro3.app.model.RecursoDidactico
@@ -137,18 +138,32 @@ class MpazProViewModel : ViewModel() {
     // Módulo "Planificación docente"
     // =====================================================================
 
-    /**
-     * TODO(equipo): devolver SOLO los contenidos APROBADOS por UTP (regla de negocio: un
-     * contenido no autorizado no puede asignarse). Hoy devuelve todos.
-     */
-    fun contenidosDisponiblesParaAsignar(): List<Contenido> = _contenidos.value
+    /** Devuelve únicamente contenidos autorizados por UTP. */
+    fun contenidosDisponiblesParaAsignar(): List<Contenido> =
+        _contenidos.value.filter { it.estado == EstadoAprobacion.APROBADO }
 
-    /**
-     * TODO(equipo): crear las asignaciones del curso para los contenidos elegidos, con el máximo
-     * de intentos de la evaluación final. RF: "seleccionar los OA disponibles", "asignar
-     * contenidos y desafíos a su curso", "definir el número máximo de intentos". Validar que
-     * todos los contenidos estén aprobados. Hoy no hace nada.
-     */
+    /** Crea o actualiza asignaciones, rechazando el lote si contiene OA no autorizados. */
+    fun asignarAlCurso(curso: String, contenidoIds: List<String>, maxIntentos: Int): Boolean {
+        if (maxIntentos < 1 || curso.isBlank() || contenidoIds.isEmpty()) return false
+        val solicitados = contenidoIds.toSet()
+        val aprobados = _contenidos.value
+            .filter { it.id in solicitados && it.estado == EstadoAprobacion.APROBADO }
+            .map { it.id }
+            .toSet()
+        if (aprobados != solicitados) return false
+
+        val actualizadas = _asignaciones.value.toMutableList()
+        var siguiente = (actualizadas.mapNotNull { it.id.removePrefix("AS").toIntOrNull() }.maxOrNull() ?: 0) + 1
+        aprobados.forEach { contenidoId ->
+            val indice = actualizadas.indexOfFirst { it.curso == curso && it.contenidoId == contenidoId }
+            if (indice >= 0) {
+                actualizadas[indice] = actualizadas[indice].copy(maxIntentosEvaluacion = maxIntentos)
+            } else {
+                actualizadas.add(Asignacion("AS${siguiente++}", curso, contenidoId, maxIntentos))
+            }
+        }
+        _asignaciones.value = actualizadas
+        return true
     }
 
     /** TODO(equipo): devolver solo las asignaciones del curso indicado. Hoy devuelve todas. */
@@ -212,34 +227,81 @@ class MpazProViewModel : ViewModel() {
         // Sin implementar todavía.
     }
 
-    /**
-     * TODO(equipo): devolver los desafíos del contenido (sin la evaluación final), ordenados
-     * por dificultad progresiva. Hoy devuelve TODAS las actividades, sin filtrar ni ordenar.
-     */
-
-    /**
-     * TODO(equipo): registrar la respuesta en el seguimiento del estudiante y devolver si fue
-     * correcta (true/false) para mostrar la retroalimentación. Hoy devuelve null.
-     */
-
-    fun evaluacionFinalDe(contenidoId: String?): List<Actividad> = _actividades.value
-
-    /**
-     * TODO(equipo): intentos que le quedan al estudiante en la evaluación final (máximo definido
-     * por el docente menos los usados). Regla de negocio: el máximo debe respetarse
-     * estrictamente. Hoy devuelve null (sin calcular).
-     */
-
-    /**
-     * TODO(equipo): registrar las respuestas de la evaluación final como un nuevo intento
-     * (solo si quedan intentos) y actualizar el seguimiento. Hoy no hace nada.
-     * @param respuestas mapa idActividad -> índice de la alternativa elegida.
-     */
+    fun desafiosDe(contenidoId: String?): List<Actividad> {
+        if (contenidoId.isNullOrBlank()) return emptyList()
+        return _actividades.value
+            .filter { it.contenidoId == contenidoId && !it.esEvaluacionFinal }
+            .sortedWith(compareBy<Actividad> { it.dificultad.ordinal }.thenBy { it.orden })
     }
 
-    /**
-     * TODO(equipo): devolver las respuestas del estudiante en el contenido, para que revise
-     * cuáles fueron correctas e incorrectas. RF: "revisar cuáles de sus respuestas fueron
-     * correctas o incorrectas". Hoy devuelve una lista vacía.
-     */
+    fun responderDesafio(estudianteId: String, actividad: Actividad, alternativa: Int): Boolean? {
+        if (estudianteId.isBlank() || actividad.esEvaluacionFinal) return null
+        val registrada = _actividades.value.firstOrNull {
+            it.id == actividad.id && it.contenidoId == actividad.contenidoId && !it.esEvaluacionFinal
+        } ?: return null
+        if (alternativa !in registrada.alternativas.indices) return null
+        val correcta = registrada.alternativas[alternativa].esCorrecta
+        val seguimientos = _seguimientos.value
+        val indice = seguimientos.indexOfFirst {
+            it.estudianteId == estudianteId && it.contenidoId == registrada.contenidoId
+        }
+        val seguimiento = seguimientos.getOrNull(indice)
+            ?: SeguimientoAvance(estudianteId, registrada.contenidoId)
+        val intento = (seguimiento.respuestas.filter { it.actividadId == registrada.id }
+            .maxOfOrNull { it.numeroIntento } ?: 0) + 1
+        val respuesta = RespuestaEstudiante(registrada.id, alternativa, correcta, intento)
+        val actualizado = seguimiento.copy(
+            respuestas = seguimiento.respuestas + respuesta,
+            estado = EstadoAvance.EN_PROGRESO
+        )
+        _seguimientos.value = if (indice >= 0) {
+            seguimientos.toMutableList().also { it[indice] = actualizado }
+        } else seguimientos + actualizado
+        return correcta
+    }
+
+    fun evaluacionFinalDe(contenidoId: String?): List<Actividad> =
+        if (contenidoId.isNullOrBlank()) emptyList()
+        else _actividades.value.filter { it.contenidoId == contenidoId && it.esEvaluacionFinal }
+            .sortedBy { it.orden }
+
+    fun intentosRestantes(estudianteId: String, contenidoId: String): Int? {
+        val estudiante = _estudiantes.value.firstOrNull { it.id == estudianteId } ?: return null
+        val maximo = _asignaciones.value
+            .filter { it.curso == estudiante.curso && it.contenidoId == contenidoId }
+            .maxOfOrNull { it.maxIntentosEvaluacion } ?: return null
+        val usados = _seguimientos.value
+            .firstOrNull { it.estudianteId == estudianteId && it.contenidoId == contenidoId }
+            ?.intentosEvaluacionUsados ?: 0
+        return (maximo - usados).coerceAtLeast(0)
+    }
+
+    fun enviarEvaluacion(estudianteId: String, contenidoId: String, respuestas: Map<String, Int>): Boolean {
+        if (intentosRestantes(estudianteId, contenidoId)?.let { it > 0 } != true) return false
+        val preguntas = evaluacionFinalDe(contenidoId)
+        if (preguntas.isEmpty() || respuestas.keys != preguntas.map { it.id }.toSet()) return false
+        if (preguntas.any { p -> respuestas[p.id]?.let { it in p.alternativas.indices } != true }) return false
+        val existentes = _seguimientos.value
+        val indice = existentes.indexOfFirst { it.estudianteId == estudianteId && it.contenidoId == contenidoId }
+        val seguimiento = existentes.getOrNull(indice) ?: SeguimientoAvance(estudianteId, contenidoId)
+        val intento = seguimiento.intentosEvaluacionUsados + 1
+        val nuevasRespuestas = preguntas.map { p ->
+            val elegida = respuestas.getValue(p.id)
+            RespuestaEstudiante(p.id, elegida, p.alternativas[elegida].esCorrecta, intento)
+        }
+        val actualizado = seguimiento.copy(
+            respuestas = seguimiento.respuestas + nuevasRespuestas,
+            intentosEvaluacionUsados = intento,
+            estado = EstadoAvance.FINALIZADO
+        )
+        _seguimientos.value = if (indice >= 0) {
+            existentes.toMutableList().also { it[indice] = actualizado }
+        } else existentes + actualizado
+        return true
+    }
+
+    fun respuestasDe(estudianteId: String, contenidoId: String): List<RespuestaEstudiante> =
+        _seguimientos.value.firstOrNull {
+            it.estudianteId == estudianteId && it.contenidoId == contenidoId
+        }?.respuestas.orEmpty()
 }
