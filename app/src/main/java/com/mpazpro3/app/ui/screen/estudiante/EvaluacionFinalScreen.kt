@@ -95,7 +95,7 @@ fun EvaluacionFinalScreen(navController: NavHostController, viewModel: MpazProVi
                 }
             }
 
-            mensaje?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+            mensaje?.let { Text(it, color = MaterialTheme.colorScheme.primary) }
 
             Button(
                 modifier = Modifier
@@ -105,7 +105,13 @@ fun EvaluacionFinalScreen(navController: NavHostController, viewModel: MpazProVi
                     preguntas.isNotEmpty() && intentos != null && intentos > 0,
                 onClick = {
                     if (viewModel.enviarEvaluacion(estudianteId, contenidoId.orEmpty(), respuestas)) {
-                        navController.navigate(Rutas.ESTUDIANTE_REVISION)
+                        respuestas = emptyMap()
+                        val quedan = viewModel.intentosRestantes(estudianteId, contenidoId.orEmpty()) ?: 0
+                        if (quedan > 0) {
+                            mensaje = "Intento registrado. Puedes responder nuevamente. Te quedan $quedan intento(s)."
+                        } else {
+                            navController.navigate(Rutas.ESTUDIANTE_REVISION)
+                        }
                     } else if (viewModel.intentosRestantes(estudianteId, contenidoId.orEmpty()) == 0) {
                         mensaje = "Ya usaste todos tus intentos"
                     } else {
@@ -113,6 +119,11 @@ fun EvaluacionFinalScreen(navController: NavHostController, viewModel: MpazProVi
                     }
                 }
             ) { Text("Enviar evaluación", style = MaterialTheme.typography.titleMedium) }
+
+            Button(
+                modifier = Modifier.fillMaxWidth(),
+                onClick = { navController.navigate(Rutas.ESTUDIANTE_REVISION) }
+            ) { Text("Ver mis respuestas") }
         }
     }
 }
