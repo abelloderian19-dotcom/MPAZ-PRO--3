@@ -53,6 +53,16 @@ fun DesafiosScreen(navController: NavHostController, viewModel: MpazProViewModel
         mutableStateOf(respuestasGuardadas.map { it.actividadId }.toSet())
     }
 
+    fun comprobarDesafio(actividad: com.mpazpro3.app.model.Actividad) {
+        val alternativa = alternativasSeleccionadas[actividad.id] ?: return
+        if (actividad.id in desafiosRespondidos) return
+        val resultado = viewModel.responderDesafio(usuario?.id.orEmpty(), actividad, alternativa)
+        if (resultado != null) {
+            resultados = resultados + (actividad.id to resultado)
+            desafiosRespondidos = desafiosRespondidos + actividad.id
+        }
+    }
+
     Scaffold(topBar = { BarraSuperior("Desafíos", navController) }) { padding ->
         Column(
             modifier = Modifier
@@ -96,14 +106,7 @@ fun DesafiosScreen(navController: NavHostController, viewModel: MpazProViewModel
                 Button(
                     modifier = Modifier.fillMaxWidth(),
                     enabled = alternativasSeleccionadas.containsKey(actual.id),
-                    onClick = {
-                        val alternativa = alternativasSeleccionadas[actual.id] ?: return@Button
-                        val resultado = viewModel.responderDesafio(usuario?.id.orEmpty(), actual, alternativa)
-                        if (resultado != null) {
-                            resultados = resultados + (actual.id to resultado)
-                            desafiosRespondidos = desafiosRespondidos + actual.id
-                        }
-                    }
+                    onClick = { comprobarDesafio(actual) }
                 ) { Text("Comprobar respuesta") }
             }
 
@@ -130,9 +133,18 @@ fun DesafiosScreen(navController: NavHostController, viewModel: MpazProViewModel
                     modifier = Modifier.weight(1f),
                     enabled = indice < desafios.lastIndex,
                     onClick = {
+                        comprobarDesafio(actual)
                         indice++
                     }
                 ) { Text("Siguiente") }
+            }
+
+            if (desafios.all { it.id in desafiosRespondidos }) {
+                val correctos = desafios.count { resultados[it.id] == true }
+                Text(
+                    "Resultados de práctica: $correctos de ${desafios.size} correctos.",
+                    style = MaterialTheme.typography.titleMedium
+                )
             }
 
             Button(
