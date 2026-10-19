@@ -103,15 +103,7 @@ fun PlanificacionDocenteScreen(navController: NavHostController, viewModel: Mpaz
                 modifier = Modifier.fillMaxWidth(),
                 enabled = seleccionados.isNotEmpty(),
                 onClick = {
-                    val asignada = viewModel.asignarAlCurso(
-                        usuario?.curso.orEmpty(), seleccionados.toList(), maxIntentos
-                    )
-                    mensaje = if (asignada) {
-                        seleccionados = emptySet()
-                        "Asignación guardada con $maxIntentos ${if (maxIntentos == 1) "intento" else "intentos"} máximos."
-                    } else {
-                        "No se pudo asignar. Verifica el curso, los contenidos aprobados y que el máximo sea al menos 1."
-                    }
+                    seleccionados = emptySet()
                 }
             ) { Text("3. Asignar a mi curso") }
         }

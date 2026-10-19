@@ -61,14 +61,6 @@ fun EvaluacionFinalScreen(navController: NavHostController, viewModel: MpazProVi
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            if (intentos != null) {
-                Text("Intentos restantes: $intentos", style = MaterialTheme.typography.titleMedium)
-            } else {
-                Text("No hay una asignación para esta evaluación.", style = MaterialTheme.typography.titleMedium)
-            }
-            if (intentos == 0) {
-                Text("Ya usaste todos tus intentos", color = MaterialTheme.colorScheme.error)
-            }
 
             preguntas.forEachIndexed { numero, pregunta ->
                 Card(modifier = Modifier.fillMaxWidth()) {
@@ -91,11 +83,8 @@ fun EvaluacionFinalScreen(navController: NavHostController, viewModel: MpazProVi
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(56.dp),
-                enabled = respuestas.size == preguntas.size && preguntas.isNotEmpty() && intentos != null && intentos > 0,
                 onClick = {
-                    if (viewModel.enviarEvaluacion(estudianteId, contenidoId.orEmpty(), respuestas)) {
-                        navController.navigate(Rutas.ESTUDIANTE_REVISION)
-                    }
+                    navController.navigate(Rutas.ESTUDIANTE_REVISION)
                 }
             ) { Text("Enviar evaluación", style = MaterialTheme.typography.titleMedium) }
         }

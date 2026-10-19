@@ -78,7 +78,6 @@ fun DesafiosScreen(navController: NavHostController, viewModel: MpazProViewModel
                 val texto = when (resultado) {
                     true -> "¡Correcto!"
                     false -> "Inténtalo de nuevo."
-                    null -> "No se pudo registrar la respuesta."
                 }
                 Text(texto, style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.secondary)
             }

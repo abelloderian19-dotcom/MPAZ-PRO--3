@@ -7,7 +7,6 @@ import com.mpazpro3.app.model.Asignacion
 import com.mpazpro3.app.model.Asignatura
 import com.mpazpro3.app.model.Contenido
 import com.mpazpro3.app.model.EstadoAprobacion
-import com.mpazpro3.app.model.EstadoAvance
 import com.mpazpro3.app.model.Estudiante
 import com.mpazpro3.app.model.InformeDocente
 import com.mpazpro3.app.model.Perfil
@@ -138,9 +137,11 @@ class MpazProViewModel : ViewModel() {
     // Módulo "Planificación docente"
     // =====================================================================
 
-    /** Devuelve únicamente contenidos autorizados por UTP. */
-    fun contenidosDisponiblesParaAsignar(): List<Contenido> =
-        _contenidos.value.filter { it.estado == EstadoAprobacion.APROBADO }
+    /**
+     * TODO(equipo): devolver SOLO los contenidos APROBADOS por UTP (regla de negocio: un
+     * contenido no autorizado no puede asignarse). Hoy devuelve todos.
+     */
+    fun contenidosDisponiblesParaAsignar(): List<Contenido> = _contenidos.value
 
     /**
      * TODO(equipo): crear las asignaciones del curso para los contenidos elegidos, con el máximo
@@ -148,31 +149,6 @@ class MpazProViewModel : ViewModel() {
      * contenidos y desafíos a su curso", "definir el número máximo de intentos". Validar que
      * todos los contenidos estén aprobados. Hoy no hace nada.
      */
-    fun asignarAlCurso(curso: String, contenidoIds: List<String>, maxIntentos: Int): Boolean {
-        if (maxIntentos < 1 || curso.isBlank() || contenidoIds.isEmpty()) return false
-
-        val idsSolicitados = contenidoIds.toSet()
-        if (idsSolicitados.isEmpty()) return false
-        val contenidosAprobados = _contenidos.value
-            .filter { it.id in idsSolicitados && it.estado == EstadoAprobacion.APROBADO }
-            .map { it.id }
-            .toSet()
-        if (contenidosAprobados != idsSolicitados) return false
-
-        val existentes = _asignaciones.value.toMutableList()
-        var siguienteId = (existentes.mapNotNull { it.id.removePrefix("AS").toIntOrNull() }.maxOrNull() ?: 0) + 1
-        contenidosAprobados.forEach { contenidoId ->
-            val indice = existentes.indexOfFirst { it.curso == curso && it.contenidoId == contenidoId }
-            if (indice >= 0) {
-                existentes[indice] = existentes[indice].copy(maxIntentosEvaluacion = maxIntentos)
-            } else {
-                existentes.add(
-                    Asignacion("AS${siguienteId++}", curso, contenidoId, maxIntentos)
-                )
-            }
-        }
-        _asignaciones.value = existentes
-        return true
     }
 
     /** TODO(equipo): devolver solo las asignaciones del curso indicado. Hoy devuelve todas. */
@@ -236,115 +212,29 @@ class MpazProViewModel : ViewModel() {
         // Sin implementar todavía.
     }
 
-    /** Devolver los desafíos del contenido sin la evaluación final, por dificultad y orden. */
-    fun desafiosDe(contenidoId: String?): List<Actividad> {
-        if (contenidoId.isNullOrBlank()) return emptyList()
-        return _actividades.value
-            .filter { it.contenidoId == contenidoId && !it.esEvaluacionFinal }
-            .sortedWith(compareBy<Actividad> { it.dificultad.ordinal }.thenBy { it.orden })
-    }
-
-    /** Registrar cada intento del desafío; null indica una entrada inválida. */
-    fun responderDesafio(estudianteId: String, actividad: Actividad, alternativa: Int): Boolean? {
-        if (estudianteId.isBlank() || actividad.esEvaluacionFinal) return null
-        val actividadRegistrada = _actividades.value.firstOrNull {
-            it.id == actividad.id &&
-                it.contenidoId == actividad.contenidoId &&
-                !it.esEvaluacionFinal
-        } ?: return null
-        if (alternativa !in actividadRegistrada.alternativas.indices) return null
-
-        val esCorrecta = actividadRegistrada.alternativas[alternativa].esCorrecta
-        val existentes = _seguimientos.value
-        val indiceSeguimiento = existentes.indexOfFirst {
-            it.estudianteId == estudianteId && it.contenidoId == actividadRegistrada.contenidoId
-        }
-        val seguimiento = existentes.getOrNull(indiceSeguimiento)
-            ?: SeguimientoAvance(
-                estudianteId = estudianteId,
-                contenidoId = actividadRegistrada.contenidoId
-            )
-        val numeroIntento = seguimiento.respuestas
-            .filter { it.actividadId == actividadRegistrada.id }
-            .maxOfOrNull { it.numeroIntento }
-            ?.plus(1) ?: 1
-        val respuesta = RespuestaEstudiante(
-            actividadId = actividadRegistrada.id,
-            alternativaElegida = alternativa,
-            esCorrecta = esCorrecta,
-            numeroIntento = numeroIntento
-        )
-        val actualizado = seguimiento.copy(
-            respuestas = seguimiento.respuestas + respuesta,
-            estado = EstadoAvance.EN_PROGRESO
-        )
-        if (indiceSeguimiento >= 0) {
-            _seguimientos.value = existentes.toMutableList().also {
-                it[indiceSeguimiento] = actualizado
-            }
-        } else {
-            _seguimientos.value = existentes + actualizado
-        }
-        return esCorrecta
-    }
-
-    /** Devuelve las preguntas de evaluación final del contenido en el orden definido. */
-    fun evaluacionFinalDe(contenidoId: String?): List<Actividad> = _actividades.value
-        .filter { it.contenidoId == contenidoId && it.esEvaluacionFinal }
-        .sortedBy { it.orden }
-
-    /** Intentos restantes: máximo definido por el docente menos los usados, sin bajar de cero. */
-    fun intentosRestantes(estudianteId: String, contenidoId: String): Int? {
-        val estudiante = _estudiantes.value.find { it.id == estudianteId } ?: return null
-        val maxIntentos = _asignaciones.value
-            .filter { it.curso == estudiante.curso && it.contenidoId == contenidoId }
-            .maxOfOrNull { it.maxIntentosEvaluacion } ?: return null
-        val usados = _seguimientos.value
-            .find { it.estudianteId == estudianteId && it.contenidoId == contenidoId }
-            ?.intentosEvaluacionUsados ?: 0
-        return (maxIntentos - usados).coerceAtLeast(0)
-    }
+    /**
+     * TODO(equipo): devolver los desafíos del contenido (sin la evaluación final), ordenados
+     * por dificultad progresiva. Hoy devuelve TODAS las actividades, sin filtrar ni ordenar.
+     */
 
     /**
-     * Registrar la evaluación solo si quedan intentos, las respuestas están completas y sus
-     * alternativas son válidas. @param respuestas mapa idActividad -> índice de alternativa.
+     * TODO(equipo): registrar la respuesta en el seguimiento del estudiante y devolver si fue
+     * correcta (true/false) para mostrar la retroalimentación. Hoy devuelve null.
      */
-    fun enviarEvaluacion(estudianteId: String, contenidoId: String, respuestas: Map<String, Int>): Boolean {
-        if (intentosRestantes(estudianteId, contenidoId)?.let { it > 0 } != true) return false
 
-        val preguntas = evaluacionFinalDe(contenidoId)
-        if (preguntas.isEmpty() || respuestas.keys != preguntas.map { it.id }.toSet()) return false
-        if (preguntas.any { pregunta ->
-                respuestas[pregunta.id]?.let { it in pregunta.alternativas.indices } != true
-            }) return false
+    fun evaluacionFinalDe(contenidoId: String?): List<Actividad> = _actividades.value
 
-        val existentes = _seguimientos.value
-        val indice = existentes.indexOfFirst {
-            it.estudianteId == estudianteId && it.contenidoId == contenidoId
-        }
-        val seguimiento = existentes.getOrNull(indice)
-            ?: SeguimientoAvance(estudianteId = estudianteId, contenidoId = contenidoId)
-        val numeroIntento = seguimiento.intentosEvaluacionUsados + 1
-        val nuevasRespuestas = preguntas.map { pregunta ->
-            val elegida = respuestas.getValue(pregunta.id)
-            RespuestaEstudiante(
-                actividadId = pregunta.id,
-                alternativaElegida = elegida,
-                esCorrecta = pregunta.alternativas[elegida].esCorrecta,
-                numeroIntento = numeroIntento
-            )
-        }
-        val actualizado = seguimiento.copy(
-            respuestas = seguimiento.respuestas + nuevasRespuestas,
-            intentosEvaluacionUsados = numeroIntento,
-            estado = EstadoAvance.FINALIZADO
-        )
-        _seguimientos.value = if (indice >= 0) {
-            existentes.toMutableList().also { it[indice] = actualizado }
-        } else {
-            existentes + actualizado
-        }
-        return true
+    /**
+     * TODO(equipo): intentos que le quedan al estudiante en la evaluación final (máximo definido
+     * por el docente menos los usados). Regla de negocio: el máximo debe respetarse
+     * estrictamente. Hoy devuelve null (sin calcular).
+     */
+
+    /**
+     * TODO(equipo): registrar las respuestas de la evaluación final como un nuevo intento
+     * (solo si quedan intentos) y actualizar el seguimiento. Hoy no hace nada.
+     * @param respuestas mapa idActividad -> índice de la alternativa elegida.
+     */
     }
 
     /**
@@ -352,8 +242,4 @@ class MpazProViewModel : ViewModel() {
      * cuáles fueron correctas e incorrectas. RF: "revisar cuáles de sus respuestas fueron
      * correctas o incorrectas". Hoy devuelve una lista vacía.
      */
-    fun respuestasDe(estudianteId: String, contenidoId: String): List<RespuestaEstudiante> =
-        _seguimientos.value
-            .find { it.estudianteId == estudianteId && it.contenidoId == contenidoId }
-            ?.respuestas.orEmpty()
 }
