@@ -37,7 +37,6 @@ import com.mpazpro3.app.viewmodel.MpazProViewModel
  * TODO(equipo):
  *  - contenidosDisponiblesParaAsignar() hoy muestra TODOS los contenidos; debe mostrar solo los
  *    aprobados (regla de negocio).
- *  - asignarAlCurso() todavía no guarda nada.
  */
 @Composable
 fun PlanificacionDocenteScreen(navController: NavHostController, viewModel: MpazProViewModel) {
@@ -98,9 +97,15 @@ fun PlanificacionDocenteScreen(navController: NavHostController, viewModel: Mpaz
                 modifier = Modifier.fillMaxWidth(),
                 enabled = seleccionados.isNotEmpty(),
                 onClick = {
-                    viewModel.asignarAlCurso(usuario?.curso.orEmpty(), seleccionados.toList(), maxIntentos)
-                    mensaje = "Asignación enviada (se verá en el panel cuando asignarAlCurso() esté implementada)."
-                    seleccionados = emptySet()
+                    val asignada = viewModel.asignarAlCurso(
+                        usuario?.curso.orEmpty(), seleccionados.toList(), maxIntentos
+                    )
+                    mensaje = if (asignada) {
+                        seleccionados = emptySet()
+                        "Asignación guardada con $maxIntentos ${if (maxIntentos == 1) "intento" else "intentos"} máximos."
+                    } else {
+                        "No se pudo asignar. Verifica el curso, los contenidos aprobados y que el máximo sea al menos 1."
+                    }
                 }
             ) { Text("3. Asignar a mi curso") }
         }

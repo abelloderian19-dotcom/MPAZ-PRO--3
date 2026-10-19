@@ -150,8 +150,29 @@ class MpazProViewModel : ViewModel() {
      * contenidos y desafíos a su curso", "definir el número máximo de intentos". Validar que
      * todos los contenidos estén aprobados. Hoy no hace nada.
      */
-    fun asignarAlCurso(curso: String, contenidoIds: List<String>, maxIntentos: Int) {
-        // Sin implementar todavía.
+    fun asignarAlCurso(curso: String, contenidoIds: List<String>, maxIntentos: Int): Boolean {
+        if (maxIntentos < 1 || curso.isBlank() || contenidoIds.isEmpty()) return false
+
+        val contenidosAprobados = _contenidos.value
+            .filter { it.id in contenidoIds && it.estado == EstadoAprobacion.APROBADO }
+            .map { it.id }
+            .toSet()
+        if (contenidosAprobados.isEmpty()) return false
+
+        val existentes = _asignaciones.value.toMutableList()
+        var siguienteId = (existentes.mapNotNull { it.id.removePrefix("AS").toIntOrNull() }.maxOrNull() ?: 0) + 1
+        contenidosAprobados.forEach { contenidoId ->
+            val indice = existentes.indexOfFirst { it.curso == curso && it.contenidoId == contenidoId }
+            if (indice >= 0) {
+                existentes[indice] = existentes[indice].copy(maxIntentosEvaluacion = maxIntentos)
+            } else {
+                existentes.add(
+                    Asignacion("AS${siguienteId++}", curso, contenidoId, maxIntentos)
+                )
+            }
+        }
+        _asignaciones.value = existentes
+        return true
     }
 
     /** TODO(equipo): devolver solo las asignaciones del curso indicado. Hoy devuelve todas. */
