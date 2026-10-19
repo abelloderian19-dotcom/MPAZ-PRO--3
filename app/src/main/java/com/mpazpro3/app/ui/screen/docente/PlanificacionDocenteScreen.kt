@@ -34,9 +34,6 @@ import com.mpazpro3.app.viewmodel.MpazProViewModel
  * (autorizados por UTP), define el máximo de intentos de la evaluación final y los asigna a su
  * curso.
  *
- * TODO(equipo):
- *  - contenidosDisponiblesParaAsignar() hoy muestra TODOS los contenidos; debe mostrar solo los
- *    aprobados (regla de negocio).
  */
 @Composable
 fun PlanificacionDocenteScreen(navController: NavHostController, viewModel: MpazProViewModel) {
@@ -62,22 +59,31 @@ fun PlanificacionDocenteScreen(navController: NavHostController, viewModel: Mpaz
                 modifier = Modifier.weight(1f),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                items(disponibles) { contenido ->
-                    Card(modifier = Modifier.fillMaxWidth()) {
-                        Row(
-                            modifier = Modifier.padding(8.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Checkbox(
-                                checked = contenido.id in seleccionados,
-                                onCheckedChange = { marcado ->
-                                    seleccionados = if (marcado) seleccionados + contenido.id else seleccionados - contenido.id
+                if (disponibles.isEmpty()) {
+                    item {
+                        Text(
+                            "UTP todavía no ha autorizado contenidos",
+                            style = MaterialTheme.typography.bodyLarge
+                        )
+                    }
+                } else {
+                    items(disponibles) { contenido ->
+                        Card(modifier = Modifier.fillMaxWidth()) {
+                            Row(
+                                modifier = Modifier.padding(8.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Checkbox(
+                                    checked = contenido.id in seleccionados,
+                                    onCheckedChange = { marcado ->
+                                        seleccionados = if (marcado) seleccionados + contenido.id else seleccionados - contenido.id
+                                    }
+                                )
+                                Column {
+                                    Text(contenido.asignatura.etiqueta, style = MaterialTheme.typography.labelMedium)
+                                    Text(contenido.objetivoAprendizaje, style = MaterialTheme.typography.bodyMedium)
+                                    Text(contenido.estado.etiqueta, style = MaterialTheme.typography.labelSmall)
                                 }
-                            )
-                            Column {
-                                Text(contenido.asignatura.etiqueta, style = MaterialTheme.typography.labelMedium)
-                                Text(contenido.objetivoAprendizaje, style = MaterialTheme.typography.bodyMedium)
-                                Text(contenido.estado.etiqueta, style = MaterialTheme.typography.labelSmall)
                             }
                         }
                     }

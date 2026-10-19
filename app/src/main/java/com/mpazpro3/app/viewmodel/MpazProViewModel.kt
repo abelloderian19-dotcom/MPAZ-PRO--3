@@ -138,11 +138,9 @@ class MpazProViewModel : ViewModel() {
     // Módulo "Planificación docente"
     // =====================================================================
 
-    /**
-     * TODO(equipo): devolver SOLO los contenidos APROBADOS por UTP (regla de negocio: un
-     * contenido no autorizado no puede asignarse). Hoy devuelve todos.
-     */
-    fun contenidosDisponiblesParaAsignar(): List<Contenido> = _contenidos.value
+    /** Devuelve únicamente contenidos autorizados por UTP. */
+    fun contenidosDisponiblesParaAsignar(): List<Contenido> =
+        _contenidos.value.filter { it.estado == EstadoAprobacion.APROBADO }
 
     /**
      * TODO(equipo): crear las asignaciones del curso para los contenidos elegidos, con el máximo
@@ -153,11 +151,13 @@ class MpazProViewModel : ViewModel() {
     fun asignarAlCurso(curso: String, contenidoIds: List<String>, maxIntentos: Int): Boolean {
         if (maxIntentos < 1 || curso.isBlank() || contenidoIds.isEmpty()) return false
 
+        val idsSolicitados = contenidoIds.toSet()
+        if (idsSolicitados.isEmpty()) return false
         val contenidosAprobados = _contenidos.value
-            .filter { it.id in contenidoIds && it.estado == EstadoAprobacion.APROBADO }
+            .filter { it.id in idsSolicitados && it.estado == EstadoAprobacion.APROBADO }
             .map { it.id }
             .toSet()
-        if (contenidosAprobados.isEmpty()) return false
+        if (contenidosAprobados != idsSolicitados) return false
 
         val existentes = _asignaciones.value.toMutableList()
         var siguienteId = (existentes.mapNotNull { it.id.removePrefix("AS").toIntOrNull() }.maxOrNull() ?: 0) + 1
@@ -236,10 +236,7 @@ class MpazProViewModel : ViewModel() {
         // Sin implementar todavía.
     }
 
-    /**
-     * TODO(equipo): devolver los desafíos del contenido (sin la evaluación final), ordenados
-     * por dificultad progresiva. Hoy devuelve TODAS las actividades, sin filtrar ni ordenar.
-     */
+    /** Devolver los desafíos del contenido sin la evaluación final, por dificultad y orden. */
     fun desafiosDe(contenidoId: String?): List<Actividad> {
         if (contenidoId.isNullOrBlank()) return emptyList()
         return _actividades.value
@@ -247,10 +244,7 @@ class MpazProViewModel : ViewModel() {
             .sortedWith(compareBy<Actividad> { it.dificultad.ordinal }.thenBy { it.orden })
     }
 
-    /**
-     * TODO(equipo): registrar la respuesta en el seguimiento del estudiante y devolver si fue
-     * correcta (true/false) para mostrar la retroalimentación. Hoy devuelve null.
-     */
+    /** Registrar cada intento del desafío; null indica una entrada inválida. */
     fun responderDesafio(estudianteId: String, actividad: Actividad, alternativa: Int): Boolean? {
         if (estudianteId.isBlank() || actividad.esEvaluacionFinal) return null
         val actividadRegistrada = _actividades.value.firstOrNull {
@@ -299,11 +293,7 @@ class MpazProViewModel : ViewModel() {
         .filter { it.contenidoId == contenidoId && it.esEvaluacionFinal }
         .sortedBy { it.orden }
 
-    /**
-     * TODO(equipo): intentos que le quedan al estudiante en la evaluación final (máximo definido
-     * por el docente menos los usados). Regla de negocio: el máximo debe respetarse
-     * estrictamente. Hoy devuelve null (sin calcular).
-     */
+    /** Intentos restantes: máximo definido por el docente menos los usados, sin bajar de cero. */
     fun intentosRestantes(estudianteId: String, contenidoId: String): Int? {
         val estudiante = _estudiantes.value.find { it.id == estudianteId } ?: return null
         val maxIntentos = _asignaciones.value
@@ -316,9 +306,8 @@ class MpazProViewModel : ViewModel() {
     }
 
     /**
-     * TODO(equipo): registrar las respuestas de la evaluación final como un nuevo intento
-     * (solo si quedan intentos) y actualizar el seguimiento. Hoy no hace nada.
-     * @param respuestas mapa idActividad -> índice de la alternativa elegida.
+     * Registrar la evaluación solo si quedan intentos, las respuestas están completas y sus
+     * alternativas son válidas. @param respuestas mapa idActividad -> índice de alternativa.
      */
     fun enviarEvaluacion(estudianteId: String, contenidoId: String, respuestas: Map<String, Int>): Boolean {
         if (intentosRestantes(estudianteId, contenidoId)?.let { it > 0 } != true) return false
