@@ -56,7 +56,7 @@ fun EvaluacionFinalScreen(navController: NavHostController, viewModel: MpazProVi
     var respuestas by remember(contenidoId, estudianteId, intentos) {
         mutableStateOf(mapOf<String, Int>())
     }
-    var mensaje by remember(contenidoId, estudianteId, intentos) { mutableStateOf<String?>(null) }
+    var mensaje by remember(contenidoId, estudianteId) { mutableStateOf<String?>(null) }
 
     Scaffold(topBar = { BarraSuperior("Evaluación final", navController) }) { padding ->
         Column(
@@ -86,7 +86,10 @@ fun EvaluacionFinalScreen(navController: NavHostController, viewModel: MpazProVi
                                     selected = respuestas[pregunta.id] == posicion,
                                     enabled = intentos != null &&
                                         intentos > 0,
-                                    onClick = { respuestas = respuestas + (pregunta.id to posicion) }
+                                    onClick = {
+                                        respuestas = respuestas + (pregunta.id to posicion)
+                                        mensaje = null
+                                    }
                                 )
                                 Text(alternativa.texto, style = MaterialTheme.typography.bodyLarge)
                             }

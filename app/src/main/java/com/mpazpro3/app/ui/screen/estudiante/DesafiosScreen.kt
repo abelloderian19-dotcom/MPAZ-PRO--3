@@ -119,6 +119,14 @@ fun DesafiosScreen(navController: NavHostController, viewModel: MpazProViewModel
                     },
                     style = MaterialTheme.typography.titleMedium
                 )
+                Button(
+                    modifier = Modifier.fillMaxWidth(),
+                    onClick = {
+                        desafiosRespondidos = desafiosRespondidos - actual.id
+                        alternativasSeleccionadas = alternativasSeleccionadas - actual.id
+                        resultados = resultados - actual.id
+                    }
+                ) { Text("Reintentar desafío") }
             }
 
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
