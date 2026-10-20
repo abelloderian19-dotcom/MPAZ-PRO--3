@@ -13,14 +13,14 @@ enum class EstadoAvance(val etiqueta: String) {
     FINALIZADO("Finalizado")
 }
 
-/**
- * Seguimiento de avance de un estudiante en un contenido (entidad del caso): respuestas,
- * intentos usados en la evaluación final y estado de avance.
- */
+
 data class SeguimientoAvance(
     val estudianteId: String,
     val contenidoId: String,
     val respuestas: List<RespuestaEstudiante> = emptyList(),
     val intentosEvaluacionUsados: Int = 0,
     val estado: EstadoAvance = EstadoAvance.NO_INICIADO
-)
+) {
+    val contenido: Any = TODO()
+    val estudiante: Any
+}
