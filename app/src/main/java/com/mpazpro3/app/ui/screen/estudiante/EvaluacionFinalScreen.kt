@@ -9,12 +9,14 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -29,18 +31,7 @@ import com.mpazpro3.app.navigation.Rutas
 import com.mpazpro3.app.ui.components.BarraSuperior
 import com.mpazpro3.app.viewmodel.MpazProViewModel
 
-/**
- * Evaluación final del contenido. RF: "responder la evaluación final dentro del número de
- * intentos permitidos". Regla de negocio: el máximo de intentos (definido por el docente) debe
- * respetarse estrictamente.
- *
- * TODO(equipo):
- *  - evaluacionFinalDe() hoy devuelve TODAS las actividades; debe devolver solo las preguntas
- *    de la evaluación final del contenido.
- *  - intentosRestantes() hoy devuelve null (sin calcular); con 0 intentos el botón Enviar ya
- *    queda deshabilitado.
- *  - enviarEvaluacion() todavía no registra el intento.
- */
+
 @Composable
 fun EvaluacionFinalScreen(navController: NavHostController, viewModel: MpazProViewModel) {
     val contenidoId by viewModel.contenidoSeleccionadoId.collectAsState()
@@ -48,6 +39,7 @@ fun EvaluacionFinalScreen(navController: NavHostController, viewModel: MpazProVi
     val estudianteId = usuario?.id.orEmpty()
     val preguntas = remember(contenidoId) { viewModel.evaluacionFinalDe(contenidoId) }
     val intentos = viewModel.intentosRestantes(estudianteId, contenidoId.orEmpty())
+    var mostrarConfirmacion by remember { mutableStateOf(false) }
 
     // Respuestas elegidas: id de la pregunta -> posición de la alternativa
     var respuestas by remember { mutableStateOf(mapOf<String, Int>()) }
@@ -89,10 +81,49 @@ fun EvaluacionFinalScreen(navController: NavHostController, viewModel: MpazProVi
                     .height(56.dp),
                 enabled = respuestas.size == preguntas.size && preguntas.isNotEmpty() && intentos != 0,
                 onClick = {
-                    viewModel.enviarEvaluacion(estudianteId, contenidoId.orEmpty(), respuestas)
-                    navController.navigate(Rutas.ESTUDIANTE_REVISION)
+                    // En lugar de enviar directo, abrimos el cuadro de confirmación
+                    mostrarConfirmacion = true
                 }
-            ) { Text("Enviar evaluación", style = MaterialTheme.typography.titleMedium) }
+            ) {
+                Text("Enviar evaluación", style = MaterialTheme.typography.titleMedium)
+            }
         }
+    }
+
+    // Diálogo de confirmación nativo de Material 3
+    if (mostrarConfirmacion) {
+        AlertDialog(
+            onDismissRequest = { mostrarConfirmacion = false },
+            title = {
+                Text(text = "¿Terminaste tu evaluación?", style = MaterialTheme.typography.titleLarge)
+            },
+            text = {
+                Text(
+                    text = "Vas a entregar tus respuestas. Esto usará 1 de tus intentos disponibles. Asegúrate de revisar bien antes de enviar.",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        mostrarConfirmacion = false
+                        // Regla de Negocio RN-03: evaluamos el retorno booleano del ViewModel
+                        val exito = viewModel.enviarEvaluacion(estudianteId, contenidoId.orEmpty(), respuestas)
+                        if (exito) {
+                            navController.navigate(Rutas.ESTUDIANTE_REVISION)
+                        }
+                    }
+                ) {
+                    Text("Sí, enviar")
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { mostrarConfirmacion = false }
+                ) {
+                    Text("Seguir revisando")
+                }
+            }
+        )
     }
 }
