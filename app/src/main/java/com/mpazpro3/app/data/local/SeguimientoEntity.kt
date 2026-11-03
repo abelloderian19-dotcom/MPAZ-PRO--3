@@ -25,7 +25,7 @@ data class SeguimientoEntity(
         childColumns = ["estudianteId", "contenidoId"],
         onDelete = ForeignKey.CASCADE
     )],
-    indices = [Index("estudianteId", "contenidoId")]
+    indices = [Index(value = ["estudianteId", "contenidoId"])]
 )
 data class RespuestaEntity(
     val estudianteId: String,
