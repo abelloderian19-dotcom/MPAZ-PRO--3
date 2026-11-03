@@ -27,10 +27,8 @@ import kotlinx.coroutines.launch
 /**
  * ViewModel único, compartido por todas las pantallas (se crea una sola vez en AppNavigation).
  *
- * ESTO ES UN ESQUELETO: las pantallas ya llaman a todas estas funciones, pero la lógica de
- * negocio del caso está vacía a propósito y marcada con TODO(equipo), citando el módulo de
- * Requerimientos_Seccion007 al que corresponde. Mientras no se implemente, las listas se
- * muestran sin filtrar y las acciones (aprobar, asignar, responder, validar) no cambian nada.
+ * Coordina las reglas de acceso, autorización UTP, planificación e interacción del estudiante.
+ * Los cálculos e informes docentes aún pendientes están marcados con TODO(equipo).
  */
 class MpazProViewModel(private val seguimientoDao: SeguimientoDao? = null) : ViewModel() {
 
@@ -62,12 +60,7 @@ class MpazProViewModel(private val seguimientoDao: SeguimientoDao? = null) : Vie
     private val _errorLogin = MutableStateFlow<String?>(null)
     val errorLogin: StateFlow<String?> = _errorLogin.asStateFlow()
 
-    /**
-     * TODO(equipo): validar usuario y clave contra MockData.usuarios. Si son correctos, dejar
-     * _usuarioActivo con ese usuario y devolver true (AppNavigation ya lleva a cada perfil a su
-     * pantalla). Si no, dejar _errorLogin con un mensaje y devolver false.
-     * Pendiente con el CITT: cómo se autentica el estudiante.
-     */
+    /** Valida una cuenta local ficticia; no reemplaza el mecanismo institucional del CITT. */
     fun login(usuario: String, clave: String): Boolean {
         val encontrado = MockData.usuarios.firstOrNull {
             it.usuario.equals(usuario.trim(), ignoreCase = true) && it.clave == clave

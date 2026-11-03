@@ -32,7 +32,7 @@ import com.mpazpro3.app.viewmodel.MpazProViewModel
  * Detalle de un contenido para UTP: datos curriculares completos, recursos didácticos asociados,
  * observación y botones Aprobar / Rechazar.
  *
- * TODO(equipo): aprobarContenido() y rechazarContenido() todavía no cambian el estado.
+ * Las decisiones de UTP actualizan el estado compartido del contenido.
  */
 @Composable
 fun DetalleContenidoUtpScreen(navController: NavHostController, viewModel: MpazProViewModel) {

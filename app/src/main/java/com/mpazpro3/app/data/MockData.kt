@@ -20,7 +20,7 @@ import com.mpazpro3.app.model.Usuario
  */
 object MockData {
 
-    /** Usuarios de prueba para el login. MpazProViewModel.login() todavía NO los usa. */
+    /** Usuarios ficticios de demostración para el login local. */
     val usuarios = listOf(
         Usuario("U1", "Jefatura UTP (demo)", "utp@mpazpro3.cl", "utp123", Perfil.UTP),
         Usuario("U2", "Docente 3° básico A (demo)", "docente.3basicoA@mpazpro3.cl", "docente123", Perfil.DOCENTE, "3° básico A"),

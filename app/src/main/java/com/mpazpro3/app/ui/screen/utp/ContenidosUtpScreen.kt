@@ -33,7 +33,7 @@ import com.mpazpro3.app.viewmodel.MpazProViewModel
  * contenidos curriculares con filtros por asignatura y por estado. Tocar un contenido abre su
  * detalle para aprobarlo o rechazarlo.
  *
- * TODO(equipo): viewModel.contenidosFiltrados() todavía no filtra.
+ * La lista puede filtrarse por asignatura y estado de autorización.
  */
 @Composable
 fun ContenidosUtpScreen(

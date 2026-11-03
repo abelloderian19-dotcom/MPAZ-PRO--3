@@ -13,11 +13,11 @@ Documentación del caso (carpeta `docs/`):
 2. Android Studio → **File > Open…** → seleccionar la carpeta que contiene `settings.gradle.kts`.
 3. Esperar el Gradle Sync (la primera vez necesita internet).
 4. Ejecutar ▶ **Run 'app'**.
-5. En el login, usar **"Modo desarrollo"** para entrar con cualquiera de los tres perfiles (el login real es tarea del equipo).
+5. Ingresar con una cuenta ficticia de prueba o usar **"Modo desarrollo"**.
 
 Si Android Studio sugiere actualizar Gradle o el Android Gradle Plugin, **no aceptar**: las versiones están fijadas para que todos los equipos usen exactamente las mismas.
 
-Usuarios de prueba (en `data/MockData.kt`, para cuando implementen el login):
+Usuarios de prueba (en `data/MockData.kt`):
 
 | Perfil | Usuario | Clave |
 |---|---|---|
@@ -25,7 +25,7 @@ Usuarios de prueba (en `data/MockData.kt`, para cuando implementen el login):
 | Docente 3° básico A | docente.3basicoA@mpazpro3.cl | docente123 |
 | Estudiante | est001 | 1234 |
 
-La forma en que se autentica el estudiante está pendiente de confirmar con el CITT.
+El acceso actual valida estas cuentas locales de demostración; no corresponde a autenticación institucional.
 
 ## Stack
 
@@ -51,7 +51,7 @@ El botón atrás nativo de Android funciona solo (lo maneja el NavHost). La flec
 | `model/` | `Contenido`, `RecursoDidactico`, `Actividad`, `Asignacion`, `Estudiante`, `SeguimientoAvance`, `InformeDocente`, `Usuario`, `Perfil` y sus enums. Corresponden a las entidades del caso. |
 | `data/` | `MockData.kt`: datos y textos pedagógicos ficticios de ejemplo. |
 | `data/local/` | Room persiste seguimientos, intentos y respuestas del estudiante. |
-| `viewmodel/` | `MpazProViewModel`: un solo ViewModel compartido. Todas las funciones pendientes están marcadas con `TODO(equipo)`. |
+| `viewmodel/` | `MpazProViewModel`: un solo ViewModel compartido con validación de acceso, autorización UTP, intentos y seguimiento. |
 | `navigation/` | `AppNavigation`: rutas, NavHost, ingreso por perfil y cierre de sesión. |
 | `ui/components/` | `BarraSuperior` (flecha atrás y cerrar sesión) y `SelectorDesplegable` (lista desplegable reutilizable). |
 | `ui/screen/` | `LoginScreen` y una carpeta por perfil: `utp/`, `docente/`, `estudiante/`. |
@@ -87,12 +87,12 @@ El botón atrás nativo de Android funciona solo (lo maneja el NavHost). La flec
 
 Para ver todo lo pendiente: **Edit > Find > Find in Files** (Ctrl+Shift+F / Cmd+Shift+F) y buscar `TODO(equipo)`.
 
-## Qué pasa hoy al ejecutar la app (es intencional)
+## Estado actual
 
-- **Ingresar:** el login siempre rechaza. Hay que entrar con "Modo desarrollo".
-- **Listas:** se muestran todos los contenidos y actividades, sin filtrar (por estado, curso o tipo).
-- **Acciones:** aprobar, rechazar, asignar, responder, enviar la evaluación, generar o validar un informe no cambian nada.
-- **Avance, retroalimentación e intentos:** el avance aparece en 0 %, la retroalimentación de los desafíos y el conteo de intentos aparecen como pendientes, y la revisión de respuestas aparece vacía.
+- **Ingresar:** las cuentas de demostración validan usuario y clave; "Modo desarrollo" sigue disponible.
+- **UTP y planificación:** los contenidos se filtran, las decisiones de aprobación/rechazo actualizan su estado y solo se asignan contenidos aprobados.
+- **Estudiante:** las respuestas e intentos se guardan con Room; hay retroalimentación animada y respuesta háptica en los desafíos.
+- **Pendiente:** el avance agregado, descarga de resultados e informes docentes todavía no están implementados.
 
 ## Orden sugerido de trabajo
 

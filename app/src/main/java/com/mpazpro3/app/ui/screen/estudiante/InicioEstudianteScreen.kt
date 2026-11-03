@@ -29,8 +29,7 @@ import com.mpazpro3.app.viewmodel.MpazProViewModel
  * asignadas con su avance. RNF: interfaz para 3° básico (textos grandes, instrucciones
  * directas, botones visibles, navegación sencilla).
  *
- * TODO(equipo): contenidosDelEstudiante() hoy muestra TODOS los contenidos; debe mostrar solo
- * los asignados a su curso. progreso() hoy devuelve 0.
+ * Presenta los contenidos aprobados asignados al curso del estudiante. progreso() está pendiente.
  */
 @Composable
 fun InicioEstudianteScreen(
