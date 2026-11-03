@@ -50,7 +50,7 @@ El botón atrás nativo de Android funciona solo (lo maneja el NavHost). La flec
 |---|---|
 | `model/` | `Contenido`, `RecursoDidactico`, `Actividad`, `Asignacion`, `Estudiante`, `SeguimientoAvance`, `InformeDocente`, `Usuario`, `Perfil` y sus enums. Corresponden a las entidades del caso. |
 | `data/` | `MockData.kt`: datos y textos pedagógicos ficticios de ejemplo. |
-| `data/local/` | `PersistenciaPendiente.kt`: guía de qué entidades, DAOs y base de datos crear con Room. |
+| `data/local/` | Room persiste seguimientos, intentos y respuestas del estudiante. |
 | `viewmodel/` | `MpazProViewModel`: un solo ViewModel compartido. Todas las funciones pendientes están marcadas con `TODO(equipo)`. |
 | `navigation/` | `AppNavigation`: rutas, NavHost, ingreso por perfil y cierre de sesión. |
 | `ui/components/` | `BarraSuperior` (flecha atrás y cerrar sesión) y `SelectorDesplegable` (lista desplegable reutilizable). |
@@ -76,7 +76,7 @@ El botón atrás nativo de Android funciona solo (lo maneja el NavHost). La flec
 | Experiencia del estudiante | Conservar el progreso y confirmar la finalización | `MaterialScreen`, `InicioEstudianteScreen` | `confirmarMaterialRevisado()`, `progreso()` |
 | Informe pedagógico | Generar informe (rendimiento, fortalezas, aspectos a reforzar) | `InformeDocenteScreen` | `generarInforme()` |
 | Informe pedagógico | Validación docente antes de considerarlo definitivo | `InformeDocenteScreen` | `validarInforme()` |
-| Persistencia | Guardar datos y progreso en el dispositivo | — | Room: ver `data/local/PersistenciaPendiente.kt` |
+| Persistencia | Guardar respuestas e intentos en el dispositivo | Room | `data/local/SeguimientoEntity.kt`, `SeguimientoDao.kt`, `AppDatabase.kt` |
 
 **Reglas de negocio que el equipo debe hacer cumplir:**
 
@@ -110,7 +110,7 @@ Para ver todo lo pendiente: **Edit > Find > Find in Files** (Ctrl+Shift+F / Cmd+
    - Mostrar el avance de cada estudiante.
    - Generar y validar el informe.
    - Descargar los resultados.
-6. **Persistencia:** reemplazar `MockData` por Room (Semana 9). El caso exige conservar el progreso del estudiante.
+6. **Persistencia:** Room conserva los seguimientos, respuestas e intentos del estudiante al cerrar la app. Los contenidos curriculares de ejemplo todavía se cargan desde `MockData`.
 7. **Cierre:**
    - Quitar el "Modo desarrollo".
    - Revisar que no quede ningún `TODO(equipo)`.

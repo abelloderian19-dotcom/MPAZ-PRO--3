@@ -1,7 +1,11 @@
 package com.mpazpro3.app.viewmodel
 
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
 import com.mpazpro3.app.data.MockData
+import com.mpazpro3.app.data.local.SeguimientoDao
+import com.mpazpro3.app.data.local.toEntities
+import com.mpazpro3.app.data.local.toModel
 import com.mpazpro3.app.model.Actividad
 import com.mpazpro3.app.model.Asignacion
 import com.mpazpro3.app.model.Asignatura
@@ -18,6 +22,7 @@ import com.mpazpro3.app.model.Usuario
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
 
 /**
  * ViewModel único, compartido por todas las pantallas (se crea una sola vez en AppNavigation).
@@ -27,7 +32,25 @@ import kotlinx.coroutines.flow.asStateFlow
  * Requerimientos_Seccion007 al que corresponde. Mientras no se implemente, las listas se
  * muestran sin filtrar y las acciones (aprobar, asignar, responder, validar) no cambian nada.
  */
-class MpazProViewModel : ViewModel() {
+class MpazProViewModel(private val seguimientoDao: SeguimientoDao? = null) : ViewModel() {
+
+    init {
+        seguimientoDao?.let { dao ->
+            viewModelScope.launch {
+                val registros = dao.listarSeguimientos()
+                val respuestas = dao.listarRespuestas().groupBy { it.estudianteId to it.contenidoId }
+                _seguimientos.value = registros.map { registro ->
+                    registro.toModel(respuestas[registro.estudianteId to registro.contenidoId].orEmpty())
+                }
+            }
+        }
+    }
+
+    private fun guardarSeguimiento(seguimiento: SeguimientoAvance) {
+        val dao = seguimientoDao ?: return
+        val (cabecera, respuestas) = seguimiento.toEntities()
+        viewModelScope.launch { dao.guardar(cabecera, respuestas) }
+    }
 
     // =====================================================================
     // Autenticación
@@ -263,6 +286,7 @@ class MpazProViewModel : ViewModel() {
         _seguimientos.value = if (indice >= 0) {
             seguimientos.toMutableList().also { it[indice] = actualizado }
         } else seguimientos + actualizado
+        guardarSeguimiento(actualizado)
         return correcta
     }
 
@@ -304,6 +328,7 @@ class MpazProViewModel : ViewModel() {
         _seguimientos.value = if (indice >= 0) {
             existentes.toMutableList().also { it[indice] = actualizado }
         } else existentes + actualizado
+        guardarSeguimiento(actualizado)
         return true
     }
 

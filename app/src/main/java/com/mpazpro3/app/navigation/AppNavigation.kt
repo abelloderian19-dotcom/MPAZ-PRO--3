@@ -1,12 +1,16 @@
 package com.mpazpro3.app.navigation
 
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.lifecycle.viewmodel.initializer
+import androidx.lifecycle.viewmodel.viewModelFactory
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.mpazpro3.app.model.Perfil
+import com.mpazpro3.app.data.local.AppDatabase
 import com.mpazpro3.app.ui.screen.LoginScreen
 import com.mpazpro3.app.ui.screen.docente.InformeDocenteScreen
 import com.mpazpro3.app.ui.screen.docente.PanelDocenteScreen
@@ -59,10 +63,16 @@ object Rutas {
 @Composable
 fun AppNavigation(
     navController: NavHostController = rememberNavController(),
-    viewModel: MpazProViewModel = viewModel()
+    injectedViewModel: MpazProViewModel? = null
 ) {
+    val appContext = LocalContext.current.applicationContext
+    val sharedViewModel = injectedViewModel ?: viewModel(factory = viewModelFactory {
+        initializer {
+            MpazProViewModel(AppDatabase.getInstance(appContext).seguimientoDao())
+        }
+    })
     val cerrarSesion: () -> Unit = {
-        viewModel.logout()
+        sharedViewModel.logout()
         navController.navigate(Rutas.LOGIN) {
             popUpTo(navController.graph.id) { inclusive = true }
         }
@@ -71,7 +81,7 @@ fun AppNavigation(
     NavHost(navController = navController, startDestination = Rutas.LOGIN) {
         composable(Rutas.LOGIN) {
             LoginScreen(
-                viewModel = viewModel,
+                viewModel = sharedViewModel,
                 onIngresar = { perfil ->
                     val destino = when (perfil) {
                         Perfil.UTP -> Rutas.UTP_CONTENIDOS
@@ -87,41 +97,41 @@ fun AppNavigation(
 
         // ---- UTP ----
         composable(Rutas.UTP_CONTENIDOS) {
-            ContenidosUtpScreen(navController, viewModel, onCerrarSesion = cerrarSesion)
+            ContenidosUtpScreen(navController, sharedViewModel, onCerrarSesion = cerrarSesion)
         }
         composable(Rutas.UTP_DETALLE) {
-            DetalleContenidoUtpScreen(navController, viewModel)
+            DetalleContenidoUtpScreen(navController, sharedViewModel)
         }
 
         // ---- Docente ----
         composable(Rutas.DOCENTE_PANEL) {
-            PanelDocenteScreen(navController, viewModel, onCerrarSesion = cerrarSesion)
+            PanelDocenteScreen(navController, sharedViewModel, onCerrarSesion = cerrarSesion)
         }
         composable(Rutas.DOCENTE_PLANIFICACION) {
-            PlanificacionDocenteScreen(navController, viewModel)
+            PlanificacionDocenteScreen(navController, sharedViewModel)
         }
         composable(Rutas.DOCENTE_RESULTADOS) {
-            ResultadosCursoScreen(navController, viewModel)
+            ResultadosCursoScreen(navController, sharedViewModel)
         }
         composable(Rutas.DOCENTE_INFORME) {
-            InformeDocenteScreen(navController, viewModel)
+            InformeDocenteScreen(navController, sharedViewModel)
         }
 
         // ---- Estudiante ----
         composable(Rutas.ESTUDIANTE_INICIO) {
-            InicioEstudianteScreen(navController, viewModel, onCerrarSesion = cerrarSesion)
+            InicioEstudianteScreen(navController, sharedViewModel, onCerrarSesion = cerrarSesion)
         }
         composable(Rutas.ESTUDIANTE_MATERIAL) {
-            MaterialScreen(navController, viewModel)
+            MaterialScreen(navController, sharedViewModel)
         }
         composable(Rutas.ESTUDIANTE_DESAFIOS) {
-            DesafiosScreen(navController, viewModel)
+            DesafiosScreen(navController, sharedViewModel)
         }
         composable(Rutas.ESTUDIANTE_EVALUACION) {
-            EvaluacionFinalScreen(navController, viewModel)
+            EvaluacionFinalScreen(navController, sharedViewModel)
         }
         composable(Rutas.ESTUDIANTE_REVISION) {
-            RevisionRespuestasScreen(navController, viewModel)
+            RevisionRespuestasScreen(navController, sharedViewModel)
         }
     }
 }
