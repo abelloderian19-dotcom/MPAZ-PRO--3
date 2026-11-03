@@ -115,23 +115,28 @@ class MpazProViewModel : ViewModel() {
     // Módulo "Autorización de contenidos (UTP)"
     // =====================================================================
 
-    /**
-     * TODO(equipo): filtrar por asignatura y por estado (null = todos). Hoy devuelve todo.
-     */
-    fun contenidosFiltrados(asignatura: Asignatura?, estado: EstadoAprobacion?): List<Contenido> = _contenidos.value
+    /** Filtra los contenidos para revisión UTP. */
+    fun contenidosFiltrados(asignatura: Asignatura?, estado: EstadoAprobacion?): List<Contenido> =
+        _contenidos.value.filter { contenido ->
+            (asignatura == null || contenido.asignatura == asignatura) &&
+                (estado == null || contenido.estado == estado)
+        }
 
-    /**
-     * TODO(equipo): cambiar el estado del contenido a APROBADO y guardar la observación.
-     * RF: "UTP debe poder revisar y autorizar/rechazar un contenido" y "registrar el estado de
-     * aprobación de cada contenido". Hoy no hace nada.
-     */
+    /** Autoriza el contenido y conserva la observación de UTP. */
     fun aprobarContenido(contenidoId: String, observacion: String) {
-        // Sin implementar todavía.
+        actualizarEstadoContenido(contenidoId, EstadoAprobacion.APROBADO, observacion)
     }
 
-    /** TODO(equipo): igual que aprobarContenido(), pero con estado RECHAZADO. Hoy no hace nada. */
+    /** Rechaza el contenido y conserva la observación de UTP. */
     fun rechazarContenido(contenidoId: String, observacion: String) {
-        // Sin implementar todavía.
+        actualizarEstadoContenido(contenidoId, EstadoAprobacion.RECHAZADO, observacion)
+    }
+
+    private fun actualizarEstadoContenido(contenidoId: String, estado: EstadoAprobacion, observacion: String) {
+        _contenidos.value = _contenidos.value.map { contenido ->
+            if (contenido.id == contenidoId) contenido.copy(estado = estado, observacionUtp = observacion)
+            else contenido
+        }
     }
 
     // =====================================================================
@@ -210,8 +215,12 @@ class MpazProViewModel : ViewModel() {
     // Módulo "Experiencia del estudiante"
     // =====================================================================
 
-    /** Devuelve las asignaturas/contenidos disponibles para presentar en el inicio del estudiante. */
-    fun contenidosDelEstudiante(usuario: Usuario?): List<Contenido> = _contenidos.value
+    /** Devuelve contenidos aprobados asignados al curso del estudiante. */
+    fun contenidosDelEstudiante(usuario: Usuario?): List<Contenido> {
+        val curso = usuario?.curso?.takeIf { it.isNotBlank() } ?: return emptyList()
+        val idsAsignados = _asignaciones.value.filter { it.curso == curso }.map { it.contenidoId }.toSet()
+        return _contenidos.value.filter { it.id in idsAsignados && it.estado == EstadoAprobacion.APROBADO }
+    }
 
     /** TODO(equipo): avance del estudiante en el contenido (0.0 a 1.0). Hoy devuelve 0. */
     fun progreso(estudianteId: String, contenidoId: String): Float = 0f
