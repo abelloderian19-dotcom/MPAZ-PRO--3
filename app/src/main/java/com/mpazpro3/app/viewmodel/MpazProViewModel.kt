@@ -69,8 +69,17 @@ class MpazProViewModel(private val seguimientoDao: SeguimientoDao? = null) : Vie
      * Pendiente con el CITT: cómo se autentica el estudiante.
      */
     fun login(usuario: String, clave: String): Boolean {
-        _errorLogin.value = "Login sin implementar — ver TODO(equipo) en MpazProViewModel.login()."
-        return false
+        val encontrado = MockData.usuarios.firstOrNull {
+            it.usuario.equals(usuario.trim(), ignoreCase = true) && it.clave == clave
+        }
+        if (encontrado == null) {
+            _usuarioActivo.value = null
+            _errorLogin.value = "Usuario o clave incorrectos."
+            return false
+        }
+        _usuarioActivo.value = encontrado
+        _errorLogin.value = null
+        return true
     }
 
     /**
@@ -87,6 +96,10 @@ class MpazProViewModel(private val seguimientoDao: SeguimientoDao? = null) : Vie
         _errorLogin.value = null
         _contenidoSeleccionadoId.value = null
         _estudianteSeleccionadoId.value = null
+    }
+
+    fun limpiarErrorLogin() {
+        _errorLogin.value = null
     }
 
     // =====================================================================

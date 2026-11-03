@@ -1,5 +1,13 @@
 package com.mpazpro3.app.ui.screen.estudiante
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -23,6 +31,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
 import com.mpazpro3.app.model.Actividad
@@ -32,6 +42,7 @@ import com.mpazpro3.app.viewmodel.MpazProViewModel
 
 @Composable
 fun DesafiosScreen(navController: NavHostController, viewModel: MpazProViewModel) {
+    val hapticFeedback = LocalHapticFeedback.current
     val contenidoId by viewModel.contenidoSeleccionadoId.collectAsState()
     val usuario by viewModel.usuarioActivo.collectAsState()
     val desafios = remember(contenidoId) { viewModel.desafiosDe(contenidoId) }
@@ -58,6 +69,7 @@ fun DesafiosScreen(navController: NavHostController, viewModel: MpazProViewModel
         if (resultado != null) {
             resultados = resultados + (actividad.id to resultado)
             desafiosRespondidos = desafiosRespondidos + actividad.id
+            hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
         }
     }
 
@@ -73,8 +85,23 @@ fun DesafiosScreen(navController: NavHostController, viewModel: MpazProViewModel
             }
 
             val actual = desafios[indice.coerceIn(0, desafios.lastIndex)]
-            Text("Desafío ${indice + 1} de ${desafios.size} · ${actual.dificultad.etiqueta}", style = MaterialTheme.typography.labelLarge)
-            Text(actual.enunciado, style = MaterialTheme.typography.headlineSmall)
+            AnimatedContent(
+                targetState = actual.id,
+                transitionSpec = {
+                    (slideInHorizontally { it / 3 } + fadeIn()) togetherWith
+                        (slideOutHorizontally { -it / 3 } + fadeOut())
+                },
+                label = "transicion_desafio"
+            ) { desafioId ->
+                val desafio = desafios.first { it.id == desafioId }
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        "Desafío ${desafios.indexOf(desafio) + 1} de ${desafios.size} · ${desafio.dificultad.etiqueta}",
+                        style = MaterialTheme.typography.labelLarge
+                    )
+                    Text(desafio.enunciado, style = MaterialTheme.typography.headlineSmall)
+                }
+            }
 
             actual.alternativas.forEachIndexed { posicion, alternativa ->
                 val seleccionada = alternativasSeleccionadas[actual.id] == posicion
@@ -100,14 +127,17 @@ fun DesafiosScreen(navController: NavHostController, viewModel: MpazProViewModel
                     enabled = alternativasSeleccionadas.containsKey(actual.id),
                     onClick = { comprobarDesafio(actual) }
                 ) { Text("Comprobar respuesta") }
-            } else {
+            }
+            AnimatedVisibility(visible = actual.id in desafiosRespondidos) {
                 Text(
                     when (resultados[actual.id]) {
                         true -> "¡Correcto!"
                         false -> "Inténtalo de nuevo."
                         null -> "No se pudo registrar la respuesta."
                     },
-                    style = MaterialTheme.typography.titleMedium
+                    style = MaterialTheme.typography.titleMedium,
+                    color = if (resultados[actual.id] == true) MaterialTheme.colorScheme.primary
+                    else MaterialTheme.colorScheme.error
                 )
             }
 

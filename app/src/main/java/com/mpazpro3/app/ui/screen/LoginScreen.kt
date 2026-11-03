@@ -13,6 +13,8 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
+import androidx.compose.material.icons.filled.ErrorOutline
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -42,9 +44,7 @@ import com.mpazpro3.app.viewmodel.MpazProViewModel
  * Inicio de sesión (primera pantalla). Según el perfil del usuario, AppNavigation lo lleva a
  * la pantalla principal de UTP, Docente o Estudiante.
  *
- * La pantalla está completa, pero viewModel.login() es TODO(equipo): por ahora siempre
- * rechaza. Mientras tanto, los botones "Modo desarrollo" permiten entrar con el usuario de
- * prueba de cada perfil. TODO(equipo): eliminarlos antes de la entrega final.
+ * Acepta las credenciales ficticias definidas en MockData y conserva accesos de desarrollo.
  *
  * Usuarios de prueba (MockData.usuarios):
  *   utp@mpazpro3.cl / utp123
@@ -61,6 +61,7 @@ fun LoginScreen(
     var usuario by remember { mutableStateOf("") }
     var clave by remember { mutableStateOf("") }
     var claveVisible by remember { mutableStateOf(false) }
+    var intentoIngresar by remember { mutableStateOf(false) }
     val error by viewModel.errorLogin.collectAsState()
 
     Scaffold { padding ->
@@ -87,26 +88,48 @@ fun LoginScreen(
 
             OutlinedTextField(
                 value = usuario,
-                onValueChange = { usuario = it },
+                onValueChange = { usuario = it; viewModel.limpiarErrorLogin() },
                 label = { Text("Usuario o correo") },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
                 singleLine = true,
+                isError = intentoIngresar && (usuario.isBlank() || error != null),
+                supportingText = if (intentoIngresar && (usuario.isBlank() || error != null)) {
+                    { Text(if (usuario.isBlank()) "Ingresa tu usuario o correo" else "Revisa tus credenciales") }
+                } else null,
+                trailingIcon = {
+                    if (intentoIngresar) Icon(
+                        imageVector = if (usuario.isBlank() || error != null) Icons.Filled.ErrorOutline else Icons.Filled.CheckCircle,
+                        contentDescription = if (usuario.isBlank() || error != null) "Revisa este campo" else "Campo completado",
+                        tint = if (usuario.isBlank() || error != null) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
+                    )
+                },
                 modifier = Modifier.fillMaxWidth()
             )
 
             OutlinedTextField(
                 value = clave,
-                onValueChange = { clave = it },
+                onValueChange = { clave = it; viewModel.limpiarErrorLogin() },
                 label = { Text("Clave") },
                 singleLine = true,
                 visualTransformation = if (claveVisible) VisualTransformation.None else PasswordVisualTransformation(),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                isError = intentoIngresar && (clave.isBlank() || error != null),
+                supportingText = if (intentoIngresar && (clave.isBlank() || error != null)) {
+                    { Text(if (clave.isBlank()) "Ingresa tu clave" else "Revisa tus credenciales") }
+                } else null,
                 trailingIcon = {
-                    IconButton(onClick = { claveVisible = !claveVisible }) {
-                        Icon(
-                            imageVector = if (claveVisible) Icons.Filled.VisibilityOff else Icons.Filled.Visibility,
-                            contentDescription = if (claveVisible) "Ocultar clave" else "Mostrar clave"
+                    androidx.compose.foundation.layout.Row {
+                        if (intentoIngresar) Icon(
+                            imageVector = if (clave.isBlank() || error != null) Icons.Filled.ErrorOutline else Icons.Filled.CheckCircle,
+                            contentDescription = if (clave.isBlank() || error != null) "Revisa este campo" else "Campo completado",
+                            tint = if (clave.isBlank() || error != null) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
                         )
+                        IconButton(onClick = { claveVisible = !claveVisible }) {
+                            Icon(
+                                imageVector = if (claveVisible) Icons.Filled.VisibilityOff else Icons.Filled.Visibility,
+                                contentDescription = if (claveVisible) "Ocultar clave" else "Mostrar clave"
+                            )
+                        }
                     }
                 },
                 modifier = Modifier.fillMaxWidth()
@@ -119,6 +142,7 @@ fun LoginScreen(
             Button(
                 modifier = Modifier.fillMaxWidth(),
                 onClick = {
+                    intentoIngresar = true
                     if (viewModel.login(usuario.trim(), clave)) {
                         viewModel.usuarioActivo.value?.perfil?.let(onIngresar)
                     }
